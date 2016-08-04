@@ -926,7 +926,7 @@
 
 		card_type = "memory";  /* only: "memory", "wifi", or "emmc" */
 		card_detect_mode = "gpio";  /* only: "sirq", "gpio", or "command" */
-		card_detect_gpios = <&gpio 117 0>; /*86v S500 GPIOD21 */  
+		card_detect_gpios = <&gpio 120 0>; /*86v S500 GPIOD24 */  
 		interrupts = < 0 42 0x4 >;
 
 		status = "okay";
