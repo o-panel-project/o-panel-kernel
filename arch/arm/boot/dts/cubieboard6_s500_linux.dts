@@ -901,8 +901,8 @@
 
 		phy-mode = "rmii";
 		phy-handle = <&phy0>;
-		phy-power-gpios = <&gpio 85 0>; /* GPIOC21 active  1:low  0:high*/		
-		phy-reset-gpios = <&gpio 84 0>; /* GPIOC20 active  1:low  0:high*/
+		//phy-power-gpios = <&gpio 85 0>; /* GPIOC21 active  1:low  0:high*/		
+		phy-reset-gpios = <&gpio 88 0>; /* GPIOC24 active  1:low  0:high*/
 
 		phy_addr = <1>;
 		address-bits = <48>;
@@ -914,7 +914,7 @@
 		compatible = "actions,owl-ethernet";
 		
 		phy0: ethernet-phy@0 {
-			compatible = "SR8201G,sr8201g";
+			compatible = "realtk,rtl8201";
 			reg = <0>;
 		};
 	};
