@@ -941,8 +941,8 @@
 
 		card_type = "wifi";  /* only: "memory", "wifi", or "emmc" */
 
-//		status = "okay";
-		status = "disabled";
+		status = "okay";
+	//	status = "disabled";
 	};
 
 	mmc@b0238000 {
@@ -984,7 +984,7 @@
 		vbus_type   = <2>; /* 0:use ic's vbuspin; 1:gpio vbus,##no support!## ;      2:use dc5v to detect vbus level*/
 		
 		/*vbus_otg_en_gpio is use to turn on/off otg vbus,it's different from vbus detect gpio;*/  
-		vbus_otg_en_gpios = <&gpio 78 1>;  /* GPIOC14,  0: low active; 1: high active */
+		vbus_otg_en_gpios = <&gpio 91 1>;  /* GPIOC14,  0: low active; 1: high active */
 		//idpin_gpio = <&gpio 63 1>;   /*if idpin detect by gpio,config the gpio to GPIOB31, input,0: low active; 1: high active*/
 		status = "okay";
 	};
@@ -1002,7 +1002,7 @@
 		pwdn-front-gpios = <&gpio 79 0>; /* GPIOC15 */
 		reset-gpios = <&gpio 80 1>; /*:GPIOC16*/
 
-		status = "okay"; /* create platform-device */
+		status = "disabled"; /* create platform-device */
 	};
 	
 	sensors: isp-sensor {
@@ -1158,9 +1158,9 @@
 	wifi_bt_power_ctl {
 		compatible = "wifi,bt,power,ctl";
 		//bt_power_gpio = <&gpio 16 0>;/*GPIOA20, high active*/   /*BT_WAKE*/
-		//wifi_bt_power_gpios = <&gpio 14 0>; /* 86v GPIOA14 */
-		//bt_en_gpios = <&gpio 17 0>;/*GPIOA17, high active*/  /*M3305 A17 reset pin*/
-		//wifi_en_gpios = <&gpio 18 0>; /*gpio_wl_reg_on = <&gpio 18 0>; */ /* 86v GPIOA18 */
+		wifi_bt_power_gpios = <&gpio 33 0>; /* GPIOB1 */
+		bt_en_gpios = <&gpio 34 0>; /*GPIOB2, high active*/ 
+		wifi_en_gpios = <&gpio 32 0>; /* GPIOB0 */
 	};
 
 	gsensor_detect {
