@@ -413,7 +413,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&serial2_state_default>;
 //		actions,enable-dma-rx;
-		status = "disabled";
+		status = "okay";
 	};
 
 	/*for BT*/
