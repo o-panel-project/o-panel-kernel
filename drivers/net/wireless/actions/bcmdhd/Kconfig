@@ -33,21 +33,3 @@ config BCMDHD_WEXT
 	help
 	  Enables WEXT support
 
-choice
-	depends on BCMDHD
-	prompt "Interrupt type"
-	---help---
-	  Interrupt type
-config BCMDHD_OOB
-	depends on BCMDHD
-	bool "Out-of-Band Interrupt"
-	default y
-	---help---
-	  Interrupt from WL_HOST_WAKE.
-config BCMDHD_SDIO_IRQ
-	depends on BCMDHD
-	bool "In-Band Interrupt"
-	---help---
-	  Interrupt from SDIO DAT[1]
-endchoice
-
