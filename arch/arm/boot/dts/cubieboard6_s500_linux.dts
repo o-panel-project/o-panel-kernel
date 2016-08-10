@@ -1153,14 +1153,14 @@
                  compatible = "gpio-leds";
                  led@1 {
                          label = "blue:GPIOB9";
-                         gpios = <&gpio 31 0>;  /*Active High*/
-                         linux,default-trigger = "heartbeat";
+                         gpios = <&gpio 41 0>;  /*Active High*/
+                         linux,default-trigger = "";
                          default-state = "ON";
                  };
                  led@2 {
                          label = "green:GPIOB8";
-                         gpios = <&gpio 30 0>;  /*Active High*/
-                         linux,default-trigger = "";
+                         gpios = <&gpio 40 0>;  /*Active High*/
+                         linux,default-trigger = "default-on";
                          default-state = "ON";
                  };      
          };
