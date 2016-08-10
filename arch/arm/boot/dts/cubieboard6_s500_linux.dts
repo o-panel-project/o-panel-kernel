@@ -1096,9 +1096,11 @@
 	};
 
 	hdmi:hdmi@b02c0000{
+		status = "okay";
 		hdcp_onoff = <0>;
 		channel_invert = <0>;
 		bit_invert = <0>;
+		hotplugable = <0>;
 		bootable = <1>; 
 		bootrotate = <0>;   
 		default_resolution = "auto";
@@ -1106,7 +1108,7 @@
 	
 	framebuffer {
 		compatible = "actions,framebuffer";  
-		def_display  = "dsi";
+		def_display  = "hdmi";
 	};
 	cvbs:cvbs@b02b0000{  
 		default_mode = "PAL";
