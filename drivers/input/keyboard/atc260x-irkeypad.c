@@ -269,7 +269,7 @@ static void asoc_irkeypad_scan(struct asoc_irkeypad *irkeypad)
 
 	asoc_irkeypad_convert(irkeypad->protocol, &(irkeypad->ir_val));
 
-	//GL5201_IRKEYPAD_INFO("[%s finished]\n",__func__);
+	GL5201_IRKEYPAD_INFO("[%s finished] ir_val= 0x%x \n",__func__,irkeypad->ir_val);
 
 	return;
 }
