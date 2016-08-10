@@ -215,7 +215,7 @@ static int atm7059_pcm_hw_params(struct snd_pcm_substream *substream,
 		switch (pcm_priv->output_mode) {
 		case O_MODE_SPDIF:
 			atslave->mode = PRIORITY_SEVEN| SRC_INCR |
-			    DST_CONSTANT | SRC_DCU | DST_DEV | HDMIAUDIO | CRITICAL_BIT;
+			    DST_CONSTANT | SRC_DCU | DST_DEV | SPDIF | CRITICAL_BIT;
 			dst_addr = SPDIF_DAT;
 			break;
 		case O_MODE_HDMI:

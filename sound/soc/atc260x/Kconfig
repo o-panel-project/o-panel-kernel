@@ -18,6 +18,12 @@ config SND_SOC_DAI_OWL
 	tristate
 	depends on SND_SOC_OWL
 
+config SND_SOC_SPDIF_OWL
+        tristate
+	depends on SND_SOC_OWL
+	default n
+
+
 config SND_SOC_ALL_PMU_OWL
 	tristate "SoC Audio support for all pmus owl board"
 	select SND_SOC_OWL
