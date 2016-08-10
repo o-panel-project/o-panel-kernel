@@ -974,7 +974,8 @@
      port0_host_plug_detect = <2>;
    }; 
    usb@b0700000 { 
-     vbus_otg_en_gpio =<&gpio 116 1>; /*GPIO D20*/ 
+     port1_host_plug_detect = <2>;
+     //vbus_otg_en_gpio =<&gpio 116 1>; /*GPIO D20*/ 
    };
 
 	monitor {
