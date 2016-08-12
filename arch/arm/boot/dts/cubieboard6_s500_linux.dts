@@ -985,7 +985,7 @@
 		vbus_type   = <2>; /* 0:use ic's vbuspin; 1:gpio vbus,##no support!## ;      2:use dc5v to detect vbus level*/
 		
 		/*vbus_otg_en_gpio is use to turn on/off otg vbus,it's different from vbus detect gpio;*/  
-		vbus_otg_en_gpios = <&gpio 91 1>;  /* GPIOC14,  0: low active; 1: high active */
+		vbus_otg_en_gpios = <&gpio 28 1>;  /* GPIOC14,  0: low active; 1: high active */
 		//idpin_gpio = <&gpio 63 1>;   /*if idpin detect by gpio,config the gpio to GPIOB31, input,0: low active; 1: high active*/
 		status = "okay";
 	};
