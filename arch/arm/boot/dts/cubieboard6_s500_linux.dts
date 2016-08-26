@@ -515,13 +515,13 @@
 				status = "okay";                /* enable/disable ADC key function (okay or disabled) */
 			};
 			atc260x-irkeypad{
-				size = <28>;
-				user_code = <16448>;
+				size = <33>;
+				user_code = <65280>;
 				protocol = <1>;
-				wk_code= <77>;
+				wk_code= <24>;
 				period = <140>;
-				ir_code = <77 67 21 28 11 14 16 17 13 26 69 66 12 1 2 3 4 5 6 7 8 9 0 68 83 18 30 31>;
-				key_code = <116 113 115 114 103 108 105 106 353 172 139 158 14 2 3 4 5 6 7 8 9 10 11 175 139 52 165 163>;
+				ir_code =  <24   20  16  70  22  71  21  64   85 21  85  91   79  78  64  30 15 17  18 76 88 27 23 77 10 29 28 90  13  6   2   28 4>;
+				key_code = <116  115 114 103 108 105 106 158  28 174 172 113  102 139 158 14  2 3   4  5  6   7 8   9 10 11 52 183 184 185 186 175 163>;
 				compatible = "actions,atc2603c-irkeypad";
 			};
 
