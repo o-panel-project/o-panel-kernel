@@ -384,12 +384,6 @@
 			};
 		};
 		
-		dsi_state_default: dsi_default {
-			dsi_mux {
-				actions,groups = "mfp1_20_19", "mfp1_18_17", "mfp1_13_12", "mfp1_11_10", "mfp1_9_7", "mfp2_30_29";
-				actions,function = "dsi";
-			};
-		};
 	};
 
 	serial@b0120000 {
@@ -837,7 +831,7 @@
 		clock-frequency = <400000>;
 		status = "okay";
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2c3_state_over_spi0>;
+		//pinctrl-0 = <&i2c3_state_over_spi0>;
 		eg2801_eeprom@14 {
                 	compatible ="actions,eg2801_eeprom";
 			reg = <0x14>;
@@ -1048,16 +1042,20 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&rgb_state_default>;
 		lcd_power_gpios = <&gpio 130 0>;
+		lcd_reset_gpios = <&gpio 131 0>;
+		lcd_spi_csx = <&gpio 73 0>;
+		lcd_spi_sck = <&gpio 72 0>;
+		lcd_spi_sdi = <&gpio 71 0>;
 		port_type = "rgb";
 		data_width = <0>;
 		videomode-0 = <&lcd_mode0>;
-		vsync_inversion = <1>;
-		hsync_inversion = <1>;
+		vsync_inversion = <0>;
+		hsync_inversion = <0>;
 		dclk_inversion = <1>;
 		lde_inversion = <0>;
 		lvds_ctl = <0x000a9521>;
 		lvds_alg_ctl0 = <0xc141a030>;
-		lightness = <228>;
+		lightness = <128>;
 		saturation = <7>;
 		contrast = <5>;
 		lcd_mode0:mode@800x480p60 {
@@ -1077,53 +1075,6 @@
 		};
 	};
 
-	dsi: dsi@b0220000 {
-		pinctrl-names = "default";
-		pinctrl-0 = <&dsi_state_default>;
-		dsi_power_gpios = <&gpio 126 1>;    /*hr280ac GPIOD30*/
-		//dsi_reset_gpios = <&gpio 115 0>;   /*S500 GPIOD19*/	
-		port_type = "dsi";	 
-		data_width = <0>;
-		videomode-0 = <&dsi_mode>;
-		hw-set = <&dsi_reg>;
-
-		dsi_reg:val{													
-				dsi_ctrl =< 0x1340>;
-				dsi_size = <0x3200000>;
-				dsi_color = <0xff0000>;
-				dsi_rgbht0 = <0x7878>;
-				dsi_rgbht1 = <0x3e8>;
-				dsi_rgbvt0 = <0x1f0c32c>;
-				dsi_rgbvt1 =<0xa>;
-				dsi_pack_cfg = <0x0>;
-				dsi_pack_header =<0xf00>;
-				dsi_vedio_cfg = <0x30c>;
-				dsi_phy_t0 = <0xa5a>;
-				dsi_phy_t1 =<0x1b12>;
-				dsi_phy_t2 = <0x2f05>;
-				dsi_phy_ctrl = <0xfc94>;
-				dsi_pin_map = <0x688>;
-				cmu_dsipll_clk = <0x12601>;
-
-
-		};
-		
-		dsi_mode:mode@800x1280p60 {
-			refresh = <60>;
-			xres = <1280>;
-			yres = <800>;
-			/*in pico second, 0.000 000 000 001s*/
-			pixclock = <15000>;
-			left_margin = <10>;
-			right_margin = <10>;
-			upper_margin = <3>;
-			lower_margin = <3>;
-			hsync_len = <30>;
-			vsync_len = <6>;
-			/*0: FB_VMODE_NONINTERLACED, 1:FB_VMODE_INTERLACED*/
-			vmode = <0>;
-		};
-	};
 
 	hdmi:hdmi@b02c0000{
 		status = "okay";
