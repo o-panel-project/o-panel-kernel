@@ -573,7 +573,7 @@
 
 			atc260x-cap-gauge{
 				compatible = "actions,atc2603c-cap-gauge";
-				capacity = < 2500 >;                              /*mAh, the full capacity of battery used*/
+				capacity = < 5300 >;                              /*mAh, the full capacity of battery used*/
 				icm_available= < 1 >;							  /* 1:available 0:not available */ 
 				icm_ohm_val = < 20 >;                             /*mohm,just 20 or 10,for ICM detecting current*/
 				taper_voltage = < 4200 >;                         /*mV,the one close to the full capacity*/
