@@ -27,7 +27,7 @@
 			dma_heap_size = <128>;
 		};
 		normal {
-			fb_heap_size = <8>;
+			fb_heap_size = <10>;
 			kinfo_heap_size = <1>;
 			carveout_heap_size = <1>;
 			dma_heap_size = <192>;
