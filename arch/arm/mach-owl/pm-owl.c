@@ -199,6 +199,7 @@ static void owl_pm_halt_upgrade(void)
     deep_pwrdn = 0;
     wakeup_src = OWL_PMIC_WAKEUP_SRC_RESET |
 			OWL_PMIC_WAKEUP_SRC_ONOFF_LONG;
+    wakeup_src |= OWL_PMIC_WAKEUP_SRC_WALL_IN; //add by bill
 
 	/* Power off system */
 	pr_info("Powering off (wakesrc: 0x%x, deep_pwrdn:%d)\n",
@@ -841,7 +842,7 @@ static void owl_set_wakeup_source(void)
 				OWL_PMIC_WAKEUP_SRC_WALL_IN | OWL_PMIC_WAKEUP_SRC_WALL_OUT |
 				OWL_PMIC_WAKEUP_SRC_ALARM;
 			wakeup_src = OWL_PMIC_WAKEUP_SRC_ONOFF_SHORT |OWL_PMIC_WAKEUP_SRC_ALARM|
-				OWL_PMIC_WAKEUP_SRC_WALL_IN | OWL_PMIC_WAKEUP_SRC_VBUS_OUT;
+				OWL_PMIC_WAKEUP_SRC_WALL_IN | OWL_PMIC_WAKEUP_SRC_VBUS_OUT | OWL_PMIC_WAKEUP_SRC_VBUS_IN;//mod by bill
 			append_aux_wakeup_src = 1;
 			break;
 
@@ -867,7 +868,7 @@ static void owl_set_wakeup_source(void)
 
 	if(!owl_pm_is_battery_connected())
 		wakeup_src &= ~(OWL_PMIC_WAKEUP_SRC_WALL_IN | OWL_PMIC_WAKEUP_SRC_WALL_OUT
-				| OWL_PMIC_WAKEUP_SRC_VBUS_IN | OWL_PMIC_WAKEUP_SRC_VBUS_OUT);
+				 | OWL_PMIC_WAKEUP_SRC_VBUS_OUT);//mod by bill
 
 	/* add onoff long press wakeup source enabled,
 	 *    when the adapter is plugged in and the battery is full.
