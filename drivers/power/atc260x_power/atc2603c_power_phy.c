@@ -210,7 +210,7 @@
 		return ret;
 	if (exist) {
 		int bat_v = atc2603c_read_adc(atc260x, "BATV");
-		printk("%s bat_v:%d\n",__func__, bat_v);
+//		printk("%s bat_v:%d\n",__func__, bat_v);
 		return 1;
 	}
 	return 0;

@@ -980,23 +980,23 @@ static void atc260x_check_bat_online(struct atc260x_charger *charger)
 {
 	int ret;
 	
-	if (first_power_on)
-	{
+//	if (first_power_on)
+//	{
 		/*check if battery is online*/
 		batv_before_check = get_batv_avr(charger);
 		ret = charger->check_bat_online(charger->atc260x);
 		if (ret <= 0) 
 		{
-			pr_warn("\n[power] No battery detected\n");
+	//		pr_warn("\n[power] No battery detected\n");
 			charger->bat_is_exist = false;
 		} 
 		else 
 		{
-			pr_info("\n[power] Battery detected\n");
+	//		pr_info("\n[power] Battery detected\n");
 			charger->bat_is_exist = true;
 		}
 		batv_after_check = get_batv_avr(charger);
-	}
+//	}
 }
 
 /**
