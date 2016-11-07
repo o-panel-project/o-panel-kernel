@@ -247,7 +247,8 @@ dtb-$(CONFIG_ARCH_OWL) += actduino_bubble_gum.dtb \
 	actduino_lemaker_guitar_probatch.dtb \
 	cubieboard6_s500_linux.dtb \
 	cubieboard6_s500_linux_cubiescreen.dtb \
-	cubieboard6_s500_linux_dvk_rgb.dtb 
+	cubieboard6_s500_linux_dvk_rgb.dtb \
+	o-panel_s500_linux.dtb
 	
 ifeq ($(CONFIG_ARCH_OWL),y)
 DTC_FLAGS = -R -4 -p 0x1000
