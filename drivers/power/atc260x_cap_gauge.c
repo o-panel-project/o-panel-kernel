@@ -156,7 +156,7 @@ struct dts_config_items
 	int shutdown_current;
 	int print_switch;
 	int log_switch;
-	
+
 	int ocv_soc_config;
 };
 
@@ -180,11 +180,11 @@ struct data_group
 };
 
 /**
-  * kfifo_data - the data will store into kfifo.
-  * @ bat_vol : battery voltage.
-  * @ bat_curr : battery current.
-  * @ timestamp : current time stamp.
-  */
+ * kfifo_data - the data will store into kfifo.
+ * @ bat_vol : battery voltage.
+ * @ bat_curr : battery current.
+ * @ timestamp : current time stamp.
+ */
 struct kfifo_data
 {
 	int bat_vol;
@@ -236,7 +236,7 @@ struct atc260x_gauge_info
 	int ch_resistor;
 	int disch_resistor;
 	bool dich_r_change;
-	
+
 	int curr_buf[SAMPLES_COUNT];
 	int vol_buf[SAMPLES_COUNT];
 	int ibatt_avg;
@@ -246,11 +246,11 @@ struct atc260x_gauge_info
 
 	int ocv;
 	int ocv_stop; 
-	
+
 	struct kfifo fifo; 
 	struct kfifo down_curve;
 	struct kfifo temp_down_curve;
-	
+
 	int soc_last;
 	int soc_now;
 	int soc_real;
@@ -265,12 +265,12 @@ struct atc260x_gauge_info
 	struct workqueue_struct *wq;
 	struct delayed_work work;
 	int interval;
-	
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend	early_suspend;
 #endif
 
-	 int (*filter_algorithm)(int *buf,  int len, int type);
+	int (*filter_algorithm)(int *buf,  int len, int type);
 
 };
 
@@ -370,19 +370,19 @@ static int ocv_soc_table_init(struct atc260x_gauge_info * info)
 	char temp_item_number[3];
 	char *src_item_number;
 	temp_item_number[2] = '\0';
-	
+
 	for(config_items_count = 0; config_items_count < 10; config_items_count++)
 	{
 		char start_item_name[11]= "ocv_soc_";
 		config_node_name = start_item_name;	
-		
+
 		item_number = config_items_count*10;
 		temp_item_number[0] = item_number/10+'0';
 		temp_item_number[1] = item_number%10+'0';
 		src_item_number = temp_item_number;
-		
+
 		config_node_name = strcat(start_item_name, src_item_number);
-		
+
 		ret = of_property_read_u32_array(info->node,config_node_name,ocv,TABLE_LEN);
 		if(ret)
 		{
@@ -407,7 +407,7 @@ static int get_pmu_ic_type(struct atc260x_gauge_info *gauge)
 	int pmu_type;
 	pmu_type = atc260x_get_ic_type(gauge->atc260x);
 	GAUGE_INFO("[%s]pmu type is %d\n", __func__,pmu_type);
-	
+
 	return pmu_type;
 }
 
@@ -428,25 +428,25 @@ static int gauge_reg_read(struct atc260x_dev *atc260x, unsigned short reg)
 		GAUGE_ERR("[%s]register reading err!\n",__func__);
 		return value;
 	}	
-	
+
 	if (ic_type == ATC260X_ICTYPE_2603A)
 		value = atc260x_reg_read(atc260x, reg_offset_atc2603a[reg]);
 	else if (ic_type == ATC260X_ICTYPE_2603C)
 		value = atc260x_reg_read(atc260x, reg_offset_atc2603c[reg]);
 	else
 		GAUGE_WARNING("we do not support this ic type!\n");
-		
+
 	return value ;
 }
 
 static int gauge_reg_write(struct atc260x_dev *atc260x, unsigned short reg,
-             unsigned short val)
+		unsigned short val)
 {
 	int ret = -EINVAL;
 
 	if (reg == 0xff)
 		return ret;
-	
+
 	if (ic_type == ATC260X_ICTYPE_2603A)
 		ret = atc260x_reg_write(atc260x, reg_offset_atc2603a[reg], val);
 	else if (ic_type == ATC260X_ICTYPE_2603C)
@@ -500,19 +500,19 @@ static int store_batt_info(struct atc260x_gauge_info * info)
 	memset(buf,0,200);
 
 	offset = sprintf(buf, "%02d:%02d:%02d,%d,%04d,%04d,%04d,%d,%d,%d,%d,%d,%d,%d,%d\t\n",
-	RTC_H_H(h),RTC_MS_M(ms),RTC_MS_S(ms),
-	info->status, 
-	info->vbatt_avg,
-	info->ibatt_avg,
-	info->ch_resistor,
-	info->disch_resistor,
-	info->ocv,
-	info->soc_real,
-	info->soc_now,
-	info->soc_filter,
-	info->soc_show,
-	info->soc_ref,
-	board_has_cm);
+			RTC_H_H(h),RTC_MS_M(ms),RTC_MS_S(ms),
+			info->status, 
+			info->vbatt_avg,
+			info->ibatt_avg,
+			info->ch_resistor,
+			info->disch_resistor,
+			info->ocv,
+			info->soc_real,
+			info->soc_now,
+			info->soc_filter,
+			info->soc_show,
+			info->soc_ref,
+			board_has_cm);
 
 	filp->f_op->llseek(filp, 0, SEEK_END);
 	filp->f_op->write(filp, (char *)buf, offset + 1, &filp->f_pos);
@@ -543,7 +543,7 @@ static int  get_cfg_items(struct atc260x_gauge_info *info)
 		GAUGE_ERR("[%s] cfg_items.capacity not config\n", __func__);
 		return -EINVAL; 
 	}
-	
+
 	/*icm available*/
 	property = of_get_property(info->node, "icm_available", &len);
 	if (property && len == sizeof(int))
@@ -563,7 +563,7 @@ static int  get_cfg_items(struct atc260x_gauge_info *info)
 		info->cfg_items.icm_available = 0;
 		return -EINVAL;
 	}
-	
+
 	/*rsense*/
 	property = of_get_property(info->node, "icm_ohm_val", &len);
 	if (property && len == sizeof(int))
@@ -703,14 +703,14 @@ static int  get_cfg_items(struct atc260x_gauge_info *info)
 	{
 		GAUGE_WARNING("cfg_items.log_switch not config\n");
 	}
-		
+
 	return 0;
 }
 
 static int  get_stored_soc(struct atc260x_gauge_info *info)
 {
 	int data; 
-	
+
 	data = gauge_reg_read(info->atc260x, PMU_SYS_CTL9);
 	if (data & 0x8000)	
 	{
@@ -728,7 +728,7 @@ static int  get_stored_soc(struct atc260x_gauge_info *info)
 static void store_soc(struct atc260x_gauge_info *info)
 {
 	int data;
-	
+
 	data = gauge_reg_read(info->atc260x, PMU_SYS_CTL9);
 	data &= 0xff;
 	data |= info->soc_show << 8;
@@ -736,7 +736,7 @@ static void store_soc(struct atc260x_gauge_info *info)
 	gauge_reg_write(info->atc260x, PMU_SYS_CTL9, data);
 }
 /* get the time from year of setting time now (minus 1970)
-*/
+ */
 #define GREENWICH_YEAR 1970
 #define ATC260X_RTC_NAME			("rtc0")
 static unsigned long get_time_hour(struct atc260x_gauge_info *info) 
@@ -746,7 +746,7 @@ static unsigned long get_time_hour(struct atc260x_gauge_info *info)
 	struct rtc_time tm;
 	struct rtc_device *rtc;
 	int year,year_gap;
-	
+
 	rtc = rtc_class_open(ATC260X_RTC_NAME);
 	if (rtc == NULL) {
 		pr_err("%s: unable to open rtc device atc260x\n", __func__);
@@ -754,15 +754,15 @@ static unsigned long get_time_hour(struct atc260x_gauge_info *info)
 	}
 	rtc_read_time(rtc, &tm);
 	rtc_class_close(rtc);
-	
+
 	year = tm.tm_year + 1900;
 	GAUGE_DBG("current year = %d\n",year);
 	year_gap = year - GREENWICH_YEAR - 1;
-	
+
 	do_gettimeofday(&current_tick);
 	GAUGE_DBG("[%s]timeofday =%lu hours\n",__func__,current_tick.tv_sec/3600);
 	tick = current_tick.tv_sec / 3600 - (year_gap * 365 * 24);
-	
+
 	return tick;
 }
 static void store_time_pre_shutdown(struct atc260x_gauge_info *info)
@@ -779,7 +779,7 @@ static void store_time_pre_shutdown(struct atc260x_gauge_info *info)
 static int get_stored_time(struct atc260x_gauge_info *info)
 {
 	int stored_time;
-	
+
 	stored_time = gauge_reg_read(info->atc260x, PMU_OV_INT_EN);
 	stored_time >>=  2;
 	GAUGE_DBG("[%s]sotred time= %d hours\n",__func__,stored_time);
@@ -808,21 +808,21 @@ static int  measure_atc2603c_current(struct atc260x_gauge_info *info)
 	int adc_value;
 
 	adc_value = gauge_reg_read(info->atc260x, PMU_ICMADC) & PMU_ICMADC_MASK;
-	
+
 	if(info->cfg_items.rsense == RSENSE_10mohm)
 		bat_cur = ((adc_value & 0x3ff) * 4578 / 1024 )/1000;
 	else if(info->cfg_items.rsense == RSENSE_20mohm)
 		bat_cur = (adc_value & 0x3ff) * 2343 / 1024;
 	else
 		GAUGE_ERR("cannot find the responding config of resistor!\n");
-		
+
 	if(PMU_ICMADC_SIGN_BIT & adc_value)
 		bat_cur = -bat_cur;
 	else
 		bat_cur = bat_cur;
-	
+
 	if (((bat_cur >= 0) && (bat_cur <= CHARGE_CURRENT_THRESHOLD)) ||
-		((bat_cur <= 0) && (abs(bat_cur) <= DISCHARGE_CURRENT_THRESHOLD)))
+			((bat_cur <= 0) && (abs(bat_cur) <= DISCHARGE_CURRENT_THRESHOLD)))
 	{
 		return 0;
 	}
@@ -852,12 +852,12 @@ static int  measure_atc2603c_current(struct atc260x_gauge_info *info)
  *|----------------------------------------------------------------
  *
  */
- static int atc260x_read_adc(struct atc260x_dev *atc260x, const char *channel_name)
+static int atc260x_read_adc(struct atc260x_dev *atc260x, const char *channel_name)
 {
 	int ret;
 	int translate_data;
 	unsigned int channel_num;
-	
+
 	channel_num = atc260x_auxadc_find_chan(atc260x,channel_name);
 	if(channel_num < 0 )
 	{
@@ -867,47 +867,47 @@ static int  measure_atc2603c_current(struct atc260x_gauge_info *info)
 	ret = atc260x_auxadc_get_translated(atc260x,channel_num, &translate_data);
 	if(ret < 0)
 		GAUGE_ERR("[%s]cannot get the correct translation data!\n",__func__);
-	
+
 	return translate_data;
 }
 static int  measure_atc2603a_current(struct atc260x_gauge_info *info)
 {
 	int ch_current;
 	int disch_current;
-	
+
 	ch_current =  atc260x_read_adc(info->atc260x, "CHGI");
 	ch_current = ch_current * info->current_ratio /PMU_CUR_RATIO_BASE;
 
 	if (ch_current > CHARGE_CURRENT_THRESHOLD)  /*60ma*/
 		return ch_current;
-	
+
 	disch_current  =  atc260x_read_adc(info->atc260x, "BATI");
 	if (disch_current <= 50)
 	{
 		goto out;
 	}
 	else if ((disch_current > 50) &&
-		(disch_current <= 60))
+			(disch_current <= 60))
 	{	
 		disch_current = disch_current + disch_current * 40 /60;
 	}
 	else if ((disch_current > 60) &&
-		(disch_current <= 75))
+			(disch_current <= 75))
 	{	
 		disch_current = disch_current + disch_current * 120 /80;
 	}
 	else if ((disch_current > 75) &&
-		(disch_current <= 116))
+			(disch_current <= 116))
 	{	
 		disch_current = disch_current + disch_current * 380 /120;
 	}
 	else if ((disch_current > 116) &&
-		(disch_current <= 165))
+			(disch_current <= 165))
 	{	
 		disch_current = disch_current + disch_current * 635 /165;
 	}
 	else if ((disch_current > 165) &&
-		(disch_current <= 200))
+			(disch_current <= 200))
 	{	
 		disch_current = disch_current + disch_current * 800 /200;
 	}
@@ -915,13 +915,13 @@ static int  measure_atc2603a_current(struct atc260x_gauge_info *info)
 	{
 		disch_current = disch_current + disch_current * 800 /200;
 	}
-	
+
 out:
 	if (disch_current > DISCHARGE_CURRENT_THRESHOLD)  /*30ma*/
 		return -disch_current;
 
 	return 0;
-	
+
 }
 
 int  measure_current(void)
@@ -932,11 +932,11 @@ int  measure_current(void)
 		bat_curr = measure_atc2603c_current(global_gauge_info_ptr);
 	}
 	else if ((ic_type == ATC260X_ICTYPE_2603A) ||
-		((ic_type == ATC260X_ICTYPE_2603C) && (!board_has_cm)))
+			((ic_type == ATC260X_ICTYPE_2603C) && (!board_has_cm)))
 	{
 		bat_curr = measure_atc2603a_current(global_gauge_info_ptr);
 	}
-	
+
 	return bat_curr;
 }
 
@@ -945,8 +945,8 @@ int  measure_iref_adc(void)
 	int iref_adc;
 
 	iref_adc = gauge_reg_read(global_gauge_info_ptr->atc260x, 
-		PMU_IREFADC);
-	
+			PMU_IREFADC);
+
 	return   iref_adc;
 }
 
@@ -961,7 +961,7 @@ static int measure_vbatt_average(void)
 	int vol_buf[SAMPLES_COUNT];
 	int sum = 0;
 	int i;
-	
+
 	for (i = 0; i < SAMPLES_COUNT; i++ )
 	{
 		vol_buf[i] = measure_vbatt();
@@ -977,7 +977,7 @@ static int measure_current_avr(void)
 	int curr_buf[SAMPLES_COUNT];
 	int sum = 0;
 	int i;
-	
+
 	for (i = 0; i < SAMPLES_COUNT; i++ )
 	{
 		curr_buf[i] = measure_current();
@@ -990,7 +990,7 @@ static int measure_current_avr(void)
 static void get_charge_status(int *status)
 {
 	int data;
-	
+
 	data = measure_current();
 	//data = measure_atc2603a_current(global_gauge_info_ptr);
 
@@ -1057,7 +1057,7 @@ static int get_responding_ocv(struct atc260x_gauge_info *info,int soc)
 	int soc_finded;
 	int ocv_add;
 	int (*ocv_soc_table_p)[2];
-	
+
 	if(info->cfg_items.ocv_soc_config)
 		ocv_soc_table_p = ocv_soc_table_config;
 	else
@@ -1082,7 +1082,7 @@ static int get_responding_ocv(struct atc260x_gauge_info *info,int soc)
 			break;
 		}
 	}
-	
+
 	return ocv_finded;
 }
 static void update_discharge_resistor(struct atc260x_gauge_info *info,int soc)
@@ -1125,14 +1125,14 @@ static void down_curve_smooth(struct atc260x_gauge_info *info, int *soc)
 		down_step = 0;
 		goto out;
 	}
-	
+
 	if (vbatt_avg <= info->cfg_items.terminal_vol - 50)
 	{
 		GAUGE_INFO("[%s] battery voltage is %dmv\n", __func__, vbatt_avg);
 		down_step = *soc;
 		goto out;
 	}
-		
+
 	bat_full = FULL_CHARGE_OCV - bati_avg * 250 / 1000;
 	if (vbatt_avg >= bat_full)
 		weight = 1000;
@@ -1145,14 +1145,14 @@ static void down_curve_smooth(struct atc260x_gauge_info *info, int *soc)
 	info->soc_ref = FULL_CHARGE_SOC / 1000 * weight; 
 	info->soc_filter = (info->soc_real * weight  + info->soc_ref * (1000 - weight)) / 1000 ;
 	GAUGE_DBG("weight=%d,soc_ref=%d,soc_filter=%d,soc_real=%d\n",
-				weight,info->soc_ref,info->soc_filter,info->soc_real);
-	
+			weight,info->soc_ref,info->soc_filter,info->soc_real);
+
 	if ((info->ocv >= FULL_CHARGE_OCV || info->soc_ref == FULL_CHARGE_SOC) && info->soc_now == FULL_CHARGE_SOC)
 	{
 		down_step = 0;
 		goto out;
 	}
-	
+
 	if (info->ocv <= 3200 + info->disch_resistor * 2000 /1000)
 	{
 		data = -measure_current();
@@ -1166,7 +1166,7 @@ static void down_curve_smooth(struct atc260x_gauge_info *info, int *soc)
 
 	/*calc down step, when battery voltage is high*/
 	/*calculate the entire battery duration time(s) according to current system consumption*/
-	
+
 	if (!bati_avg) {
 		down_step = 0;
 		goto out;
@@ -1182,7 +1182,7 @@ static void down_curve_smooth(struct atc260x_gauge_info *info, int *soc)
 	down_step = down_step * info->interval;
 	GAUGE_DBG("[%s] down_step=soc_per_sec*interval=soc_per_sec*%d=%d\n", 
 			__func__,info->interval, down_step);
-	
+
 	if (info->soc_filter < info->soc_now)
 	{
 		if (info->soc_filter > 10000)
@@ -1207,7 +1207,7 @@ static void down_curve_smooth(struct atc260x_gauge_info *info, int *soc)
 			if (down_step >= 500)
 				down_step = 500;
 		}
-			
+
 		GAUGE_DBG("[%s]soc_filter(%d) < soc_now(%d),down_step=%d\n",__func__,info->soc_filter,info->soc_now,down_step);
 	}
 	else
@@ -1246,7 +1246,7 @@ out:
 static void soc_post_process(struct atc260x_gauge_info *info)
 {
 	int soc_last;
-	
+
 	if (info->soc_now  > FULL_CHARGE_SOC) 
 	{
 		info->soc_now = FULL_CHARGE_SOC;
@@ -1255,7 +1255,7 @@ static void soc_post_process(struct atc260x_gauge_info *info)
 	{
 		info->soc_now = EMPTY_DISCHARGE_SOC;
 	}
-	
+
 	mutex_lock(&info->lock);
 	info->soc_show = info->soc_now / 1000;	
 	mutex_unlock(&info->lock);
@@ -1266,31 +1266,32 @@ static void soc_post_process(struct atc260x_gauge_info *info)
 	 */
 	soc_last = get_stored_soc(info);
 	if ((soc_last >= 0) && 
-		soc_last - info->soc_show > 1) {
+			soc_last - info->soc_show > 1) {
+		//GAUGE_DBG("\n sunsj soc_post_process info->soc_last = %d \n",soc_last);
 		info->soc_last = soc_last;
 	}
-	
+
 	store_soc(info);
 
 	if (info->soc_show % 5)
 		ch_resistor_calced = 0;
-		
+
 	if (info->cfg_items.print_switch)
 	{
 		batt_info_dump(info);
 	}
-	
+
 	if (info->cfg_items.log_switch)
 	{
 		store_batt_info(info);
 	}
-	
+
 }
 
 static int get_threshold(int type)
 {
 	int threshold = 0 ;
-	
+
 	if (type == CURRENT_TYPE)
 	{
 		threshold = BAT_CUR_VARIANCE_THRESHOLD;
@@ -1318,32 +1319,32 @@ static int filter_algorithm1(int *buf,  int len, int type)
 	int i;
 	int j;
 	int k;
-	
-    	if (!buf) 
+
+	if (!buf) 
 	{
-        		return -EINVAL;
-    	}
+		return -EINVAL;
+	}
 
 	threshold = get_threshold(type);
-		
+
 	/*divided the data into several group*/
 	group[0].index = 0;
 	group[0].num = 1;
-    	for (i = 1, j = 0;  i < len; i++) 
-    	{
+	for (i = 1, j = 0;  i < len; i++) 
+	{
 		if (abs(buf[i] - buf[i - 1]) > threshold)
 		{
 			group[++j].index = i;
 		}
 
 		group[j].num = (i + 1) - group[j].index;
-    	}
+	}
 
 	/*handle  every group*/
 	for (i = 0; i < sizeof(group) / sizeof(struct data_group); i++)
 	{
 		GAUGE_DBG("group[%d].index=%d, group[%d].num=%d\n", i, group[i].index, i, group[i].num);
-		
+
 		if (group[i].num >= 5)
 		{
 			for (j = group[i].index; j <= (group[i].index + group[i].num + 1) /2; j++)
@@ -1364,13 +1365,13 @@ static int filter_algorithm1(int *buf,  int len, int type)
 				{
 					group[i].avr_data = group[i].sum  / group[i].count ;
 					GAUGE_DBG("[%s] Average cur/vol=%d/%d=%d\n", 
-						__func__, group[i].sum, group[i].count, group[i].avr_data);
+							__func__, group[i].sum, group[i].count, group[i].avr_data);
 
 					return group[i].avr_data;
 				}
 			}
 
-			
+
 		}
 
 	}
@@ -1380,68 +1381,68 @@ static int filter_algorithm1(int *buf,  int len, int type)
 
 /*filter for gathered batt current and batt voltage.
  * note : the process of filter_algorithm2 is looser than filter_algorithm1.
- 
-static int filter_algorithm2(int *buf,  int len, int type)
-{
-	int threshold = 0;
-	int avr_data;
-	int count;
-	int sum;
-	int j;
-	int k;
 
-	if (!buf) 
-	{
-        		return -EINVAL;
-    	}
-	
-	threshold = get_threshold(type);
-	
-	for (j = 0; j <= (len + 1) /2; j++)
-	{
-		sum = buf[j];
-		count = 1;
-		for (k = j; k < len; k++)
-		{
-			if (abs(buf[k + 1] - buf[k]) < threshold)
-			{
-				sum+= buf[k + 1];
-				count++;
-			}
-		}
+ static int filter_algorithm2(int *buf,  int len, int type)
+ {
+ int threshold = 0;
+ int avr_data;
+ int count;
+ int sum;
+ int j;
+ int k;
 
-		if (count >= (len + 1) / 2)
-		{
-			avr_data = sum  / count ;
-			GAUGE_DBG("[%s] Average cur/vol=%d/%d=%d\n", 
-				__func__, sum, count, avr_data);
+ if (!buf) 
+ {
+ return -EINVAL;
+ }
 
-			return avr_data;
-		}
-	}
+ threshold = get_threshold(type);
 
-	return -EINVAL;
-}
-*/
+ for (j = 0; j <= (len + 1) /2; j++)
+ {
+ sum = buf[j];
+ count = 1;
+ for (k = j; k < len; k++)
+ {
+ if (abs(buf[k + 1] - buf[k]) < threshold)
+ {
+ sum+= buf[k + 1];
+ count++;
+ }
+ }
+
+ if (count >= (len + 1) / 2)
+ {
+ avr_data = sum  / count ;
+ GAUGE_DBG("[%s] Average cur/vol=%d/%d=%d\n", 
+ __func__, sum, count, avr_data);
+
+ return avr_data;
+ }
+ }
+
+ return -EINVAL;
+ }
+ */
 /*by testing ,we know that the current change depend the scene,but always not hardly
  *we just calculate the data near the average value
  *the one apart from the average by 100 will be discarded 
  */ 
- 
- static int filter_algorithm3(int *buf,  int len, int type)
- {
+
+static int filter_algorithm3(int *buf,  int len, int type)
+{
 	int threshold = 0;
 	int avr_data;
 	int count = 0;
 	int sum = 0;
 	int j;
 	int k;
-	
+
 	if (!buf) 
-        return -EINVAL;
-	
+		return -EINVAL;
+
 	threshold = get_threshold(type);
-	
+
 	for(j = 0;j < len;j++)
 		sum += buf[j];
 	avr_data = sum / len;
@@ -1457,14 +1458,14 @@ static int filter_algorithm2(int *buf,  int len, int type)
 		avr_data = sum / count;
 	else
 		return -EINVAL;
-	
+
 	return avr_data;
- }
+}
 
 static int filter_process(struct atc260x_gauge_info *info)
 {
 	struct kfifo_data fifo_data;
-	
+
 	fifo_data.bat_vol = 
 		info->filter_algorithm(info->vol_buf, SAMPLES_COUNT, VOLTAGE_TYPE);
 	fifo_data.bat_curr = 
@@ -1472,13 +1473,13 @@ static int filter_process(struct atc260x_gauge_info *info)
 	fifo_data.timestamp.tv_sec = current_tick.tv_sec;
 	fifo_data.timestamp.tv_usec = current_tick.tv_usec;
 	GAUGE_DBG("[%s] the latest value: %d(vol), %d(cur)\n",
-		__func__, fifo_data.bat_vol, fifo_data.bat_curr);
-	
+			__func__, fifo_data.bat_vol, fifo_data.bat_curr);
+
 	/* modified by cxj@20141029 */
 	if ((fifo_data.bat_vol == -EINVAL) ||
-		(fifo_data.bat_curr == -EINVAL))
+			(fifo_data.bat_curr == -EINVAL))
 		return -EINVAL;
-	
+
 	kfifo_in(&info->fifo, &fifo_data, sizeof(struct kfifo_data));
 
 	return 0;
@@ -1492,7 +1493,7 @@ static void  gather_battery_info(struct atc260x_gauge_info *info)
 	int i;
 
 	do_gettimeofday(&current_tick);
-	
+
 	for (i = 0; i < SAMPLES_COUNT; i++ )
 	{
 		info->vol_buf[i] = measure_vbatt();
@@ -1518,32 +1519,32 @@ static int calc_charge_resistor(struct atc260x_gauge_info *info)
 		GAUGE_ERR("measure_current :data <0");
 		goto out;
 	}
-	
+
 	if (chg_current >= 500)
 	{
 		atc260x_set_charger_current(500, &reg_chg_current);
 		msleep(2000);
 		gather_battery_info(info);
 		ret = filter_process(info);
-		
+
 		if (ret)
 		{
 			GAUGE_ERR("[%s]filter_process failed!\n",__func__);
 			goto out;
 		}
-		
+
 		atc260x_set_charger_current(100, &ret);
 		msleep(1500);
-		
+
 		gather_battery_info(info);
 		ret = filter_process(info);
-		
+
 		if (ret)
 		{
 			GAUGE_ERR("[%s]filter_process failed!\n",__func__);
 			goto out;
 		}
-		
+
 		atc260x_set_charger_current(reg_chg_current, &ret);
 		msleep(500);
 	}
@@ -1555,16 +1556,16 @@ static int calc_charge_resistor(struct atc260x_gauge_info *info)
 		GAUGE_DBG("[%s]turn off charger!\n",__func__);
 		atc260x_charger_turn_off_force();
 		msleep(500);
-		
+
 		gather_battery_info(info);
 		ret = filter_process(info);
-		
+
 		if (ret)
 		{
 			GAUGE_ERR("[%s]filter_process failed!\n",__func__);
 			goto out;
 		}
-		
+
 		atc260x_set_charger_current(reg_chg_current, &ret);
 		GAUGE_DBG("[%s]turn on charger!\n",__func__);
 		atc260x_charger_turn_on_force();
@@ -1575,22 +1576,22 @@ static int calc_charge_resistor(struct atc260x_gauge_info *info)
 	{
 		ret = kfifo_out(&info->fifo, &fifo_data[0], sizeof(struct kfifo_data));
 		GAUGE_DBG("[%s] %d(vol), %d(cur), dequeue len:%d\n", 
-			__func__, fifo_data[0].bat_vol, fifo_data[0].bat_curr, ret);
+				__func__, fifo_data[0].bat_vol, fifo_data[0].bat_curr, ret);
 		ret = kfifo_out(&info->fifo, &fifo_data[1], sizeof(struct kfifo_data));
 		GAUGE_DBG("[%s] %d(vol), %d(cur), dequeue len:%d\n", 
-			__func__, fifo_data[1].bat_vol, fifo_data[1].bat_curr, ret);
+				__func__, fifo_data[1].bat_vol, fifo_data[1].bat_curr, ret);
 
 		if ((fifo_data[0].bat_vol > fifo_data[1].bat_vol) && 
-			(fifo_data[0].bat_curr > fifo_data[1].bat_curr)) 
+				(fifo_data[0].bat_curr > fifo_data[1].bat_curr)) 
 		{
 			/* calculate resistor :mohm*/
 			data = 1000 * (fifo_data[0].bat_vol  - fifo_data[1].bat_vol)
-			    / (fifo_data[0].bat_curr - fifo_data[1].bat_curr);
-				
+				/ (fifo_data[0].bat_curr - fifo_data[1].bat_curr);
+
 			GAUGE_DBG("fifo_data[0].bat_vol = %d, fifo_data[1].bat_vol = %d\n",fifo_data[0].bat_vol,fifo_data[1].bat_vol);
 			GAUGE_DBG("fifo_data[0].bat_curr = %d, fifo_data[1].bat_curr = %d\n",fifo_data[0].bat_curr,fifo_data[1].bat_curr);
 			GAUGE_DBG("here ch_resistor = %d\n",data);
-			
+
 			if (data <= 500)
 				info->ch_resistor = data;
 			else
@@ -1616,72 +1617,72 @@ static int calc_ocv(struct atc260x_gauge_info *info)
 
 	switch (info->status)
 	{
-	case POWER_SUPPLY_STATUS_NOT_CHARGING:
-		for (i = 0, vbatt_sum = 0; i < SAMPLES_COUNT; i++) 
-		{
-			vbatt_sum += info->vol_buf[i];
-		}
-		
-		info->vbatt_avg = vbatt_sum / SAMPLES_COUNT;
-		info->ocv = info->vbatt_avg;
-		info->ocv_stop = info->cfg_items.terminal_vol+TERMINAL_VOL_ADD;
-		info->ibatt_avg = 0;
-		break;
-	case POWER_SUPPLY_STATUS_CHARGING:
-	case POWER_SUPPLY_STATUS_DISCHARGING:
-		for (i = 0, ibatt_sum = 0, vbatt_sum = 0; i < SAMPLES_COUNT; i++) 
-		{
-			vbatt_sum += info->vol_buf[i];
+		case POWER_SUPPLY_STATUS_NOT_CHARGING:
+			for (i = 0, vbatt_sum = 0; i < SAMPLES_COUNT; i++) 
+			{
+				vbatt_sum += info->vol_buf[i];
+			}
+
+			info->vbatt_avg = vbatt_sum / SAMPLES_COUNT;
+			info->ocv = info->vbatt_avg;
+			info->ocv_stop = info->cfg_items.terminal_vol+TERMINAL_VOL_ADD;
+			info->ibatt_avg = 0;
+			break;
+		case POWER_SUPPLY_STATUS_CHARGING:
+		case POWER_SUPPLY_STATUS_DISCHARGING:
+			for (i = 0, ibatt_sum = 0, vbatt_sum = 0; i < SAMPLES_COUNT; i++) 
+			{
+				vbatt_sum += info->vol_buf[i];
+				if (info->status == POWER_SUPPLY_STATUS_CHARGING)
+				{
+					if (info->curr_buf[i] > 0)
+					{
+						ibatt_sum += info->curr_buf[i];
+						count ++;
+					}
+				}
+				else if (info->status == POWER_SUPPLY_STATUS_DISCHARGING)
+				{
+					if (info->curr_buf[i] < 0)
+					{
+						ibatt_sum += -info->curr_buf[i];
+						count ++;
+					}
+				} 
+
+			}
+			info->vbatt_avg = vbatt_sum / SAMPLES_COUNT;
+			/*added by cxj@20141101:division cannot be zero*/
+			if(count != 0)
+				info->ibatt_avg = ibatt_sum / count;
+			else      /*if zero ,battery is of full power*/
+			{
+				/*modified by cxj@20141113:cannot return -EINVAL,because of full capacity*/
+				info->ocv = info->vbatt_avg;
+				info->ibatt_avg = 0;
+				return 0; 
+			}
+
 			if (info->status == POWER_SUPPLY_STATUS_CHARGING)
 			{
-				if (info->curr_buf[i] > 0)
-				{
-					ibatt_sum += info->curr_buf[i];
-					count ++;
-				}
+				info->ocv = info->vbatt_avg - info->ibatt_avg * info->ch_resistor / 1000;
+				GAUGE_DBG("[%s] ocv:%d\n", __func__, info->ocv);
 			}
 			else if (info->status == POWER_SUPPLY_STATUS_DISCHARGING)
-			{
-				if (info->curr_buf[i] < 0)
-				{
-					ibatt_sum += -info->curr_buf[i];
-					count ++;
-				}
-			} 
-			
-		}
-		info->vbatt_avg = vbatt_sum / SAMPLES_COUNT;
-		/*added by cxj@20141101:division cannot be zero*/
-		if(count != 0)
-			info->ibatt_avg = ibatt_sum / count;
-		else      /*if zero ,battery is of full power*/
-		{
-	      /*modified by cxj@20141113:cannot return -EINVAL,because of full capacity*/
-			info->ocv = info->vbatt_avg;
-			info->ibatt_avg = 0;
-			return 0; 
-		}
-		
-		if (info->status == POWER_SUPPLY_STATUS_CHARGING)
-		{
-			info->ocv = info->vbatt_avg - info->ibatt_avg * info->ch_resistor / 1000;
-			GAUGE_DBG("[%s] ocv:%d\n", __func__, info->ocv);
-		}
-		else if (info->status == POWER_SUPPLY_STATUS_DISCHARGING)
-		{	
-			info->ocv = info->vbatt_avg + info->ibatt_avg * info->disch_resistor / 1000;
-			info->ocv_stop = info->cfg_items.terminal_vol + TERMINAL_VOL_ADD + info->ibatt_avg * info->disch_resistor / 1000;
-			GAUGE_DBG("[%s] ocv:%d, ocv stop:%d\n", 
-				__func__, info->ocv, info->ocv_stop);
-		}
-		break;
-	default:
-		GAUGE_WARNING("[%s] charging status err!\n" ,__func__);
-		return -EINVAL;
+			{	
+				info->ocv = info->vbatt_avg + info->ibatt_avg * info->disch_resistor / 1000;
+				info->ocv_stop = info->cfg_items.terminal_vol + TERMINAL_VOL_ADD + info->ibatt_avg * info->disch_resistor / 1000;
+				GAUGE_DBG("[%s] ocv:%d, ocv stop:%d\n", 
+						__func__, info->ocv, info->ocv_stop);
+			}
+			break;
+		default:
+			GAUGE_WARNING("[%s] charging status err!\n" ,__func__);
+			return -EINVAL;
 	}
-	
+
 	return 0;
-	
+
 }
 
 /* Calculate State of Charge (percent points) */
@@ -1691,21 +1692,21 @@ static void calc_soc(struct atc260x_gauge_info *info, int ocv, int *soc)
 	int count;
 	int soc_finded;
 	int (*ocv_soc_table_p)[2];
-	
+
 	if(info->cfg_items.ocv_soc_config)
 		ocv_soc_table_p = ocv_soc_table_config;
 	else
 		ocv_soc_table_p = ocv_soc_table;
-		
+
 	if(ocv < (*ocv_soc_table_p)[0])
 	{
 		*soc = 0;
 		GAUGE_DBG("[%s] ocv:%d, soc:0(ocv is less than the minimum value, set soc zero)\n", 
-			__func__, ocv);
+				__func__, ocv);
 		return;
 	}
 	count = ARRAY_SIZE(ocv_soc_table);
-	
+
 	for (i = count -1; i >= 0; i--) 
 	{
 		if (ocv >= (*(ocv_soc_table_p + i))[0])
@@ -1718,8 +1719,8 @@ static void calc_soc(struct atc260x_gauge_info *info, int ocv, int *soc)
 			soc_finded = (*(ocv_soc_table_p + i))[1];
 			GAUGE_DBG("soc_finded=%d\n",soc_finded);
 			*soc = soc_finded*1000 + (ocv - (*(ocv_soc_table_p + i))[0])*
-					((*(ocv_soc_table_p + i + 1))[1]-soc_finded)*1000/
-					(((*(ocv_soc_table_p + i + 1))[0]) - (*(ocv_soc_table_p + i))[0]);
+				((*(ocv_soc_table_p + i + 1))[1]-soc_finded)*1000/
+				(((*(ocv_soc_table_p + i + 1))[0]) - (*(ocv_soc_table_p + i))[0]);
 			GAUGE_DBG("[%s]ocv:%d, calc soc is %d\n", __func__, ocv, *soc);
 			break;
 		}
@@ -1734,9 +1735,9 @@ static int soc_average(struct atc260x_gauge_info *info,  int soc)
 	int soc_avr;
 	int i;
 	int size;
-	
+
 	size = sizeof(info->soc_queue) / sizeof(int);
-	
+
 	info->soc_queue[info->index++ % size] = soc;
 
 	if (info->index < size -1)
@@ -1761,9 +1762,9 @@ static int soc_average(struct atc260x_gauge_info *info,  int soc)
 static int generate_poll_interval(struct atc260x_gauge_info *info)
 {
 	int data;
-	
+
 	data = measure_vbatt_average();
-	
+
 	if (data >= info->cfg_items.terminal_vol + 100)
 	{
 		if (info->soc_show == 99 || info->soc_real == FULL_CHARGE_SOC || full_power_dealing)
@@ -1783,7 +1784,7 @@ static int generate_poll_interval(struct atc260x_gauge_info *info)
 	}
 
 	GAUGE_DBG("[%s] bat_vol :%d, interval = %d\n", __func__, data, info->interval);
-	
+
 	return info->interval;
 }
 
@@ -1800,7 +1801,7 @@ static void soc_grow_up(struct atc260x_gauge_info *info,int grow_step)
 {
 	if (info->soc_now == FULL_CHARGE_SOC)
 		return ;
-		
+
 	if (info->soc_real > info->soc_now)
 	{
 		info->soc_now +=  grow_step;
@@ -1808,7 +1809,7 @@ static void soc_grow_up(struct atc260x_gauge_info *info,int grow_step)
 	}
 	if (info->soc_now > FULL_CHARGE_SOC)
 		info->soc_now = FULL_CHARGE_SOC;
-	
+
 }
 
 #define CLIMB_UP_TIME  30
@@ -1819,20 +1820,20 @@ static void soc_now_compensation(struct atc260x_gauge_info *info)
 	int soc_up_step;
 	int soc_compensate;
 	int soc_to_show;
-	
+
 	int ratio = 1;
 	chg_current = measure_current_avr();
 	batv = measure_vbatt_average();
 	/*interval * FULL_CHARGE_SOC / (info->cfg_items.capacity * 3600 / chg_current)*/
 	soc_up_step = info->interval * FULL_CHARGE_SOC / 100 * chg_current / (info->cfg_items.capacity * 36);
-	
+
 	/*for test*/
 	if (info->soc_real >= 90000 && info->soc_real <= 98000)
 		ratio = 2;
 	soc_up_step = soc_up_step / ratio;
 	soc_to_show = info->soc_now + soc_up_step;
 	GAUGE_DBG("soc_now = %d,soc_up_step = %d,soc_to_show=%d\n",info->soc_now,soc_up_step,soc_to_show);
-	
+
 	if ( info->soc_real < 90000)
 	{
 		if (info->soc_real >= soc_to_show + 2000)
@@ -1845,7 +1846,7 @@ static void soc_now_compensation(struct atc260x_gauge_info *info)
 			GAUGE_DBG("finally:soc_now : %d\n",soc_to_show);		
 		}
 	}
-	
+
 	if (soc_to_show >= info->soc_real + 1000 )
 	{
 		soc_compensate = soc_up_step;
@@ -1853,7 +1854,7 @@ static void soc_now_compensation(struct atc260x_gauge_info *info)
 		soc_to_show -= soc_compensate;
 		GAUGE_DBG("finally:soc_now : %d\n",soc_to_show);
 	}
-	
+
 	if (soc_to_show >= FULL_CHARGE_SOC - 1)
 		info->soc_now = FULL_CHARGE_SOC - 1;
 	else
@@ -1874,13 +1875,13 @@ static void full_power_schedule(struct atc260x_gauge_info *info)
 	info->ocv = info->vbatt_avg;
 	calc_soc(info, info->ocv, &info->soc_real);
 	GAUGE_DBG("after 5 secs,bat_vol(ocv)= %d\n",info->vbatt_avg);	
-	
+
 	if(info->soc_real == FULL_CHARGE_SOC)
 	{
 		GAUGE_DBG("[%s]soc_real has been FULL_CHARGE_SOC!now minus 1000\n",__func__);
 		info->soc_real = FULL_CHARGE_SOC - 1000;
 	}
-	
+
 	if (info->vbatt_avg >= (info->cfg_items.taper_vol))
 	{
 		taper_interval += info->interval;
@@ -1897,7 +1898,7 @@ static void full_power_schedule(struct atc260x_gauge_info *info)
 			 */
 			GAUGE_DBG("turn on charger finally!\n");
 			atc260x_charger_turn_on_force();
-			
+
 			full_power_dealing = false;
 			taper_interval = 0;
 		}	
@@ -1934,14 +1935,14 @@ static bool pre_full_power_schedule(struct atc260x_gauge_info *info)
 	int chg_current;
 	int current_set_now;
 	bool full_power_test = false;
-	
+
 	bat_curr = measure_current_avr();	
 	bat_vol = measure_vbatt_average();
 	GAUGE_DBG("bat_curr=%d,bat_vol=%d\n",bat_curr,bat_vol);
-	
+
 	current_set_now = get_chg_current_now();
 	GAUGE_DBG("current_set_now = %d\n",current_set_now);
-	
+
 	if(info->cfg_items.min_over_chg_protect_voltage >= 4275)
 	{
 		if (bat_vol > 4200)
@@ -1951,7 +1952,7 @@ static bool pre_full_power_schedule(struct atc260x_gauge_info *info)
 				if (bat_curr < info->cfg_items.taper_current)
 				{
 					GAUGE_DBG("current_set_now > 300 && bat_cur < %d:enter full power dealing\n",
-								info->cfg_items.taper_current);
+							info->cfg_items.taper_current);
 					full_power_test = true;
 					taper_interval = 0;
 				}
@@ -1961,7 +1962,7 @@ static bool pre_full_power_schedule(struct atc260x_gauge_info *info)
 				if (info->ocv >= info->cfg_items.taper_vol)
 				{
 					GAUGE_DBG("current_set_now<300 && ocv >= %d:enter full power dealing\n",
-								info->cfg_items.taper_vol);
+							info->cfg_items.taper_vol);
 					full_power_test = true;
 					taper_interval = 0;
 				}
@@ -1985,7 +1986,7 @@ static bool pre_full_power_schedule(struct atc260x_gauge_info *info)
 				if (bat_curr < info->cfg_items.taper_current)
 				{
 					GAUGE_DBG("current_set_now = 400 && bat_curr < %d:enter full power\n",
-								info->cfg_items.taper_current);
+							info->cfg_items.taper_current);
 					full_power_test = true;
 					taper_interval = 0;
 				}
@@ -1995,22 +1996,22 @@ static bool pre_full_power_schedule(struct atc260x_gauge_info *info)
 				if (info->ocv >= info->cfg_items.taper_vol)
 				{
 					GAUGE_DBG("current_set_now < 400 && ocv >= %d:enter full power\n",
-								info->cfg_items.taper_vol);
+							info->cfg_items.taper_vol);
 					full_power_test = true;
 					taper_interval = 0;
 				}
 			}
 		}
-			
+
 	}
-	
+
 	/*for test*/
 	if (info->ocv >= info->cfg_items.taper_vol && info->soc_now == (FULL_CHARGE_SOC-1))
 	{
 		full_power_test = true;
 		taper_interval = 0;
 	}
-	
+
 	GAUGE_DBG("[%s]full_power_test =%d\n",__func__,full_power_test);
 	full_power_dealing = full_power_test;
 	return full_power_test;
@@ -2021,7 +2022,7 @@ static int  charge_process(struct atc260x_gauge_info *info)
 	int ret;
 	int current_set_now;
 	int chg_current;
-	
+
 	if (info->soc_real == FULL_CHARGE_SOC)
 	{
 		if (info->cfg_items.log_switch)
@@ -2068,21 +2069,21 @@ static int  charge_process(struct atc260x_gauge_info *info)
 		GAUGE_ERR("[%s]calc ocv fail!\n",__func__);
 		return ret;
 	}
-	
+
 	/*calc soc*/
 	calc_soc(info, info->ocv, &info->soc_real);
-	
+
 	soc_now_compensation(info);
-	
+
 	/*if the calc_soc has been FULL_CHARGE_SOC, we do not make it as it should be
 	 * because the full power schedule will do it
-	*/
+	 */
 	if(info->soc_real == FULL_CHARGE_SOC)
 	{
 		GAUGE_DBG("[%s]soc_real has been FULL_CHARGE_SOC!now minus 1000\n",__func__);
 		info->soc_real = FULL_CHARGE_SOC - 1000;
 	}
-	
+
 	return 0;
 }
 
@@ -2100,7 +2101,7 @@ static int  discharge_process(struct atc260x_gauge_info *info)
 		GAUGE_DBG("[%s]calc_ocv failed!\n",__func__);
 		return ret;
 	}
-	
+
 	if (first_flag)
 	{
 		calc_soc(info, info->ocv, &info->soc_real);
@@ -2109,11 +2110,11 @@ static int  discharge_process(struct atc260x_gauge_info *info)
 	}
 	else
 		calc_soc(info, info->ocv, &soc_real_test);/*not allow soc_real go up*/
-	
+
 	if (soc_real_test < info->soc_real)
 	{
 		info->soc_real = soc_real_test;
-		
+
 	}
 	else
 	{
@@ -2123,7 +2124,7 @@ static int  discharge_process(struct atc260x_gauge_info *info)
 			info->dich_r_change = false;
 		}
 	}
-	GAUGE_DBG("soc_real:%d\n",info->soc_real);
+	GAUGE_DBG("soc_real:%d soc_now:%d\n",info->soc_real,info->soc_now);
 
 	down_curve_smooth(info, &info->soc_now);
 
@@ -2138,7 +2139,7 @@ static int notcharging_process(struct atc260x_gauge_info *info)
 	 * full power status in charge_process
 	 * soc_now >0:avoid poor healthy status of battery,such as no battery ,short circuit.
 	 * soc_now <FULL_CHARGE_SOC:avoid still stepping into full power dealing when capacity is 100%,
-	*/
+	 */
 	if(info->soc_now == FULL_CHARGE_SOC || info->soc_now <= 0)
 	{
 		if (info->cfg_items.log_switch)
@@ -2148,7 +2149,7 @@ static int notcharging_process(struct atc260x_gauge_info *info)
 		}
 		return 0;
 	}
-	
+
 	gather_battery_info(info);
 	calc_ocv(info);
 	calc_soc(info, info->ocv, &info->soc_real);  
@@ -2170,7 +2171,7 @@ static int notcharging_process(struct atc260x_gauge_info *info)
 			{
 				if (info->soc_now + 500 < FULL_CHARGE_SOC)  /*for 1*/
 					info->soc_now += 500;
-				
+
 			}
 			else if (info->soc_real < info->soc_now - 500)
 			{
@@ -2180,7 +2181,7 @@ static int notcharging_process(struct atc260x_gauge_info *info)
 		}
 		return 0;
 	}
-	
+
 	if(info->soc_real == FULL_CHARGE_SOC)
 	{
 		GAUGE_DBG("[%s]soc_real has been FULL_CHARGE_SOC!now minus 1000\n",__func__);
@@ -2189,7 +2190,7 @@ static int notcharging_process(struct atc260x_gauge_info *info)
 	/* here,if charger is not on,it should be:
 	 * 1.being in full_power_dealing
 	 * 2.just plug in adapter a moment
-	*/
+	 */
 	if(info->ocv >= (info->cfg_items.taper_vol))
 	{
 		soc_grow_up(info,500);
@@ -2217,7 +2218,7 @@ static void board_cm_pre_detect(struct atc260x_gauge_info *info)
 	int bat_vol;
 	int icm_ok;
 	int ret;
-	
+
 	if (!info->cfg_items.icm_available)
 		goto out;
 	ret = atc260x_pstore_get(info->atc260x,ATC260X_PSTORE_TAG_GAUGE_ICM_EXIST,&icm_ok);
@@ -2232,10 +2233,10 @@ static void board_cm_pre_detect(struct atc260x_gauge_info *info)
 		GAUGE_INFO("icm does not work normally!\n");
 		goto out;
 	}
-	
+
 	bat_vol = measure_vbatt();
 	bat_curr_normal = measure_atc2603a_current(info);
-	
+
 	if (bat_curr_normal == 0)	
 	{
 		icm_detect_loop = true;
@@ -2281,13 +2282,13 @@ static void board_cm_detect(struct atc260x_gauge_info *info)
 	 * the current detected was not real,just for tester to use,
 	 * when test_icm_enable is true
 	 */
-	
+
 	if (!test_icm_enable)
 		icm_cur = measure_atc2603c_current(info);
 	else
 		icm_cur = 0;
 	GAUGE_DBG("normal_cur =%d,icm_cur = %d\n",normal_cur,icm_cur);
-	
+
 	if(icm_cur == 0)
 	{		
 		if(board_has_cm)
@@ -2322,17 +2323,17 @@ static void soc_update_after_resume(struct atc260x_gauge_info *info)
 
 	unsigned int soc_consume;
 	unsigned int soc_to_show;
-	
+
 	getnstimeofday(&resume_ts);
 	sleeping_ts = timespec_sub(resume_ts, suspend_ts);
-	
+
 	soc_consume = (unsigned int)sleeping_ts.tv_sec * info->cfg_items.suspend_current /(info->cfg_items.capacity * 36);
 	GAUGE_DBG("sleeping_ts.tv_sec(%ld)*FULL_CHARGE_SOC(%d)*SUSPEND_CURRENT(%d)/1000/(capacity(%d)*3600)=%u\n",
-				sleeping_ts.tv_sec,FULL_CHARGE_SOC,info->cfg_items.suspend_current,info->cfg_items.capacity,soc_consume);
+			sleeping_ts.tv_sec,FULL_CHARGE_SOC,info->cfg_items.suspend_current,info->cfg_items.capacity,soc_consume);
 
 	if((soc_consume < 1000 && info->soc_now == FULL_CHARGE_SOC) || pre_charge_status == POWER_SUPPLY_STATUS_NOT_CHARGING)
 		soc_consume = 0;
-	
+
 	soc_to_show = info->soc_now - soc_consume;
 	if (soc_to_show > 0)
 		info->soc_now = soc_to_show;
@@ -2352,13 +2353,13 @@ static int soc_update_after_reboot(struct atc260x_gauge_info *info)
 	unsigned int soc_to_show;
 	int ret;
 	int batv_avr;
-	
+
 	time_now = get_time_hour(info);
 	time_stored = get_stored_time(info);
 	time_space = (time_now - time_stored) * 3600;
 	GAUGE_DBG("the time of shutdown is %lus\n",time_space);
 	soc_stored = get_stored_soc(info) * 1000;
-	
+
 	if (time_space < SHUTDOWN_TIME_THRESHOLD)
 	{
 		soc_consume = time_space * info->cfg_items.shutdown_current /(info->cfg_items.capacity * 36);
@@ -2368,7 +2369,65 @@ static int soc_update_after_reboot(struct atc260x_gauge_info *info)
 		if(soc_to_show > 0)
 			info->soc_now = soc_to_show + 500; /*500:avoid soc to be show being cut 1% suddenly*/
 		else
-			info->soc_now = 0;
+		{
+			//sunsj modefy begin
+			//GAUGE_DBG("\n sunsj add soc_update_after_reboot info->soc_now = 0 \n");
+			//info->soc_now = 15000;
+			ret = calc_ocv(info);
+			if (ret)
+			{
+				GAUGE_ERR("[%s]calculate ocv failed!!\n",__func__);
+				return ret;
+			}
+			calc_soc(info, info->ocv, &info->soc_real);
+
+			/* 
+			 * if bat voltage is equal with or less than stop voltage by 50mv, 
+			 * use real soc to prevent abnormal  shutdown.
+			 */
+			batv_avr = measure_vbatt_average();
+			if ((batv_avr < info->cfg_items.terminal_vol + 50) &&
+					info->soc_real <= info->soc_now)
+			{
+				info->soc_now = info->soc_real;
+				return 0;
+			}
+
+			if(info->soc_real < 15000)
+			{
+				if(soc_stored < info->soc_real)
+				{
+					//GAUGE_DBG("\n sunsj 1 add soc_update_after_reboot soc_stored = %d \n",soc_stored);
+					info->soc_now = soc_stored;
+				}
+				else
+					info->soc_now =  info->soc_real;
+			}
+			else
+			{
+				if(abs(soc_stored-info->soc_real) > 10000)
+				{
+					if(soc_stored < info->soc_real)
+					{
+						//GAUGE_DBG("\n sunsj 2 add soc_update_after_reboot soc_stored = %d \n",soc_stored);
+						if(soc_stored != 0)
+							info->soc_now = soc_stored;
+						else
+							info->soc_now = info->soc_real;
+					}
+					else
+						info->soc_now =  info->soc_real;				
+				}
+				else
+				{
+					//GAUGE_DBG("\n sunsj 3 add soc_update_after_reboot soc_stored = %d \n",soc_stored);
+					info->soc_now = soc_stored;
+				}
+			}
+
+			//sunsj modefy end
+
+		}
 	}
 	else
 	{
@@ -2386,7 +2445,7 @@ static int soc_update_after_reboot(struct atc260x_gauge_info *info)
 		 */
 		batv_avr = measure_vbatt_average();
 		if ((batv_avr < info->cfg_items.terminal_vol + 50) &&
-			info->soc_real <= info->soc_now)
+				info->soc_real <= info->soc_now)
 		{
 			info->soc_now = info->soc_real;
 			return 0;
@@ -2395,7 +2454,10 @@ static int soc_update_after_reboot(struct atc260x_gauge_info *info)
 		if(info->soc_real < 15000)
 		{
 			if(soc_stored < info->soc_real)
+			{
+				//GAUGE_DBG("\n sunsj 1 soc_update_after_reboot soc_stored = %d \n",soc_stored);
 				info->soc_now = soc_stored;
+			}
 			else
 				info->soc_now =  info->soc_real;
 		}
@@ -2404,12 +2466,23 @@ static int soc_update_after_reboot(struct atc260x_gauge_info *info)
 			if(abs(soc_stored-info->soc_real) > 10000)
 			{
 				if(soc_stored < info->soc_real)
-					info->soc_now = soc_stored;
+				{
+					//GAUGE_DBG("\n sunsj 2 soc_update_after_reboot soc_stored = %d \n",soc_stored);
+//sunsj modefy begin
+					if(soc_stored != 0) 
+						info->soc_now = soc_stored;
+					else
+						info->soc_now = info->soc_real;
+//sunsj modefy end
+				}
 				else
 					info->soc_now =  info->soc_real;				
 			}
 			else
+			{
+				//GAUGE_DBG("\n sunsj 3 soc_update_after_reboot soc_stored = %d \n",soc_stored);
 				info->soc_now = soc_stored;
+			}
 		}
 
 	}
@@ -2420,21 +2493,21 @@ static int  init_capacity(struct atc260x_gauge_info *info)
 	int ret;
 	int wakeup_flag;
 	int soc_stored;
-	
+
 	/*added by cxj @2014-12-04
 	 *if resume,we let cost_time to be zero,as from suspend to resume,it always not costs more than 30sec
-	*/
+	 */
 	cost_time = 0;
 
 	gather_battery_info(info);
 	get_charge_status(&info->status);
 	wakeup_flag = owl_pm_wakeup_flag();
-	
+
 	/* chenbo@20150608, 
 	 * recalclate soc when boot due to  upgrade or onoff 8s or reset 
 	 */
 	if (info->first_product || 
-		wakeup_flag == OWL_PMIC_WAKEUP_SRC_RESET)
+			wakeup_flag == OWL_PMIC_WAKEUP_SRC_RESET)
 	{
 		if (wakeup_flag == OWL_PMIC_WAKEUP_SRC_RESET)
 			GAUGE_INFO("%s onoff 8s wakeup or reset\n", __func__);
@@ -2445,32 +2518,43 @@ static int  init_capacity(struct atc260x_gauge_info *info)
 			return ret;
 		}
 		calc_soc(info, info->ocv, &info->soc_real);
-		
+
 		info->soc_now = info->soc_real;
-		
+
 		if (info->first_product)
 			info->first_product = false;
 		GAUGE_INFO("[%s] usable soc:%d, current soc:%d\n",
-		__func__, info->soc_real, info->soc_now);	
+				__func__, info->soc_real, info->soc_now);	
 		/* chenbo@20150608, 
-	 	*  recalclate soc when boot due to onoff 8s or reset 
-	 	*/
+		 *  recalclate soc when boot due to onoff 8s or reset 
+		 */
 		if (wakeup_flag == OWL_PMIC_WAKEUP_SRC_RESET)
 		{
 			soc_stored = get_stored_soc(info) * 1000;
 			if (soc_stored < 0)
 				return 0;
-				
+
 			if(info->soc_real < 15000 || 
-				abs(soc_stored - info->soc_real) > 10000)
+					abs(soc_stored - info->soc_real) > 10000)
+			{
+				//GAUGE_DBG("\n sunsj 1 init_capacity soc_stored = %d soc_real = %d \n",soc_stored,info->soc_real);
 				info->soc_now = min(soc_stored, info->soc_real);
+			}
 			else
-				info->soc_now = soc_stored;
+			{
+				GAUGE_DBG("\n sunsj 2 init_capacity soc_stored = %d \n",soc_stored);
+//sunsj modefy begin
+				if(soc_stored != 0)
+					info->soc_now = soc_stored;
+				else
+					info->soc_now = info->soc_real;
+//sunsj modefy end
+			}
 			GAUGE_INFO("[%s] soc_stored:%d, soc_real:%d\n",
-				__func__, soc_stored, info->soc_real);
-				
+					__func__, soc_stored, info->soc_real);
+
 		}
-		
+
 	}
 	else
 	{
@@ -2499,11 +2583,11 @@ static void gauge_update(struct work_struct *work)
 	charge_status = info->status;
 	/* added by cxj @2014-12-10
 	 * when resuming, init_capacity cost much time,take it here
-	*/
+	 */
 	if(resume_flag)
 	{
 		board_cm_pre_detect(info);
-		
+
 		ret = init_capacity(info);
 		if (ret)
 		{
@@ -2513,22 +2597,22 @@ static void gauge_update(struct work_struct *work)
 		resume_flag = false;
 		GAUGE_INFO("[%s]resume,init_capacity done!",__func__);
 	}
-	
+
 	if (icm_detect_loop)
 		board_cm_detect(info);
-	
+
 	/* if the status has been changed,we discard the kfifo data*/
 	get_charge_status(&info->status);
 	if (charge_status ^ info->status)
 	{
-		GAUGE_INFO("charge status changed!\n");
+//		GAUGE_INFO("charge status changed!\n");//remove by bill
 		start_anew(info);  
-		 if (info->status == POWER_SUPPLY_STATUS_DISCHARGING)
-			 update_discharge_resistor(info,info->soc_now);
+		if (info->status == POWER_SUPPLY_STATUS_DISCHARGING)
+			update_discharge_resistor(info,info->soc_now);
 	}
-	
+
 	/*modified by cxj@20141117*/
-	
+
 	if (info->status == POWER_SUPPLY_STATUS_CHARGING)
 	{
 		charge_process(info);
@@ -2541,7 +2625,7 @@ static void gauge_update(struct work_struct *work)
 	{
 		notcharging_process(info);
 	}
-	
+
 	soc_post_process(info);
 	generate_poll_interval(info);
 	queue_delayed_work(info->wq, &info->work, info->interval * HZ);
@@ -2570,7 +2654,7 @@ static void resistor_init(struct atc260x_gauge_info *info)
 	info->ch_resistor = 150;
 	info->disch_resistor = 250;
 	GAUGE_INFO("[%s] inited ch_resistor : %d, inited disch_resistor:%d\n",
-		__func__, info->ch_resistor, info->disch_resistor); 
+			__func__, info->ch_resistor, info->disch_resistor); 
 }
 static int  init_gauge(struct atc260x_gauge_info *info)
 {
@@ -2584,24 +2668,24 @@ static int  init_gauge(struct atc260x_gauge_info *info)
 
 	start_anew(info);
 	info->interval = 5;
-	
+
 	info->first_product = first_product(info->atc260x);
 	GAUGE_INFO("[%s] first_product:%d\n", __func__, info->first_product);
 
 	resistor_init(info);
 	info->filter_algorithm = filter_algorithm3;
-	
+
 	/* detect cm before init_capacity */
 	if(ic_type == ATC260X_ICTYPE_2603C)
 		board_cm_pre_detect(info);
-	
+
 	ret = init_capacity(info);
 	if (ret)
 	{
 		GAUGE_ERR("[%s]init_capacity failed!\n",__func__);
 		return ret;
 	}
-	
+
 	return 0;
 }
 
@@ -2621,7 +2705,7 @@ void gauge_reset(struct atc260x_gauge_info *info)
 {
 	int resistor;
 	int data;
-	
+
 	resistor = gauge_reg_read(info->atc260x, PMU_OV_INT_EN);
 	resistor = resistor | (0x3fff << 2);
 	gauge_reg_write(info->atc260x, PMU_OV_INT_EN, resistor);
@@ -2645,7 +2729,7 @@ static ssize_t store_reset(struct device *dev, struct device_attribute *attr,
 	get_stored_time(info);
 	get_stored_soc(info);
 	first_product(info->atc260x);
-			
+
 	return count;
 }
 
@@ -2671,7 +2755,7 @@ static ssize_t show_test_kfifo(struct device *dev,
 	struct kfifo_data kfifo_data;
 	struct kfifo_data test;
 	int ret;
-	
+
 	kfifo_data.bat_curr = 1000;
 	kfifo_data.bat_vol = 3800;
 	kfifo_in(&info->fifo, &kfifo_data, sizeof(struct kfifo_data));
@@ -2700,7 +2784,7 @@ static ssize_t show_test_filter(struct device *dev,
 	int test_buf[10] = {550,560,    600,610,619,605, 608,    700,710,720};
 	ret = filter_algorithm1(test_buf, 10, CURRENT_TYPE);
 	printk("ret = %d\n", ret);
-	
+
 	return 0;
 }
 static ssize_t store_test_filter(struct device *dev, struct device_attribute *attr,
@@ -2749,13 +2833,13 @@ static ssize_t store_test_icm(struct device *dev, struct device_attribute *attr,
 			printk("write 0 to ICM_EXIST successfully\n");
 		}
 		printk("recover to work normally:%d\n",icm_status_to_fail);
-		
+
 	}
 	else
 		printk("please enter 0 or 1:0-normal work 1-icm fail\n");
-		
+
 	return count;
-		
+
 }
 static ssize_t store_log_switch(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
@@ -2782,7 +2866,7 @@ static ssize_t store_print_switch(struct device *dev, struct device_attribute *a
 		const char *buf, size_t count)
 {
 	int print_switch;
-	
+
 	sscanf(buf,"%d\n",&print_switch);
 	if (print_switch == 1 || print_switch == 0)
 	{
@@ -2814,20 +2898,20 @@ static struct device_attribute gauge_attrs[] =
 int gauge_create_sysfs(struct device *dev)
 {
 	int r, t;
-	
+
 	GAUGE_INFO("[%s] create sysfs for gauge\n", __func__);
-	
+
 	for (t = 0; t < ARRAY_SIZE(gauge_attrs); t++) 
 	{
 		r = device_create_file(dev, &gauge_attrs[t]);
-	
+
 		if (r)
 		{
 			dev_err(dev, "failed to create sysfs file\n");
 			return r;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -2846,12 +2930,12 @@ void gauge_remove_sysfs(struct device *dev)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void atc260x_gauge_early_suspend(struct early_suspend *handler)
 {
-    printk("[%s-%d] enter early_suspend\n", __FUNCTION__, __LINE__);
+	printk("[%s-%d] enter early_suspend\n", __FUNCTION__, __LINE__);
 }
 
 static void atc260x_gauge_later_resume(struct early_suspend *handler)
 {
-    printk("[%s-%d] enter later_resume\n", __FUNCTION__, __LINE__);
+	printk("[%s-%d] enter later_resume\n", __FUNCTION__, __LINE__);
 
 }
 #endif  //CONFIG_HAS_EARLYSUSPEND
@@ -2859,42 +2943,42 @@ static void atc260x_gauge_later_resume(struct early_suspend *handler)
 static int atc260x_change_log_switch_pre_suspend(struct notifier_block *nb, unsigned long event, void *dummy)
 {
 	switch (event) {
-	case PM_SUSPEND_PREPARE:
-		if(global_gauge_info_ptr->cfg_items.log_switch == 1)
-		{
-			global_gauge_info_ptr->store_gauge_info_switch_sav = global_gauge_info_ptr->cfg_items.log_switch;
-			global_gauge_info_ptr->cfg_items.log_switch = 0;
-		}
-		GAUGE_INFO("log_switch = %d\n",global_gauge_info_ptr->cfg_items.log_switch);
-		return NOTIFY_OK;
-	default:
-		return NOTIFY_DONE;
+		case PM_SUSPEND_PREPARE:
+			if(global_gauge_info_ptr->cfg_items.log_switch == 1)
+			{
+				global_gauge_info_ptr->store_gauge_info_switch_sav = global_gauge_info_ptr->cfg_items.log_switch;
+				global_gauge_info_ptr->cfg_items.log_switch = 0;
+			}
+			GAUGE_INFO("log_switch = %d\n",global_gauge_info_ptr->cfg_items.log_switch);
+			return NOTIFY_OK;
+		default:
+			return NOTIFY_DONE;
 	}
 }
 static int atc260x_change_log_switch_pre_shutdown(struct notifier_block *nb, unsigned long event, void *dummy)
 {
 	cancel_delayed_work_sync(&global_gauge_info_ptr->work);
 	switch (event) {
-	case SYS_POWER_OFF:
-		if(global_gauge_info_ptr->cfg_items.log_switch == 1)
-		{
-			global_gauge_info_ptr->store_gauge_info_switch_sav = global_gauge_info_ptr->cfg_items.log_switch;
-			global_gauge_info_ptr->cfg_items.log_switch = 0;
-		}
-		GAUGE_INFO("log_switch = %d\n",global_gauge_info_ptr->cfg_items.log_switch);
-		/*
-		 * chenbo@20150514
-		 * restore last soc during discharging,
-		 * if soc jump from some soc(>1%) to zero.
-		 */
-		if (global_gauge_info_ptr->soc_show == 0 &&
-			global_gauge_info_ptr->soc_last > 0) {
-			global_gauge_info_ptr->soc_show = global_gauge_info_ptr->soc_last;
-			store_soc(global_gauge_info_ptr);
-		}
-		return NOTIFY_OK;
-	default:
-		return NOTIFY_DONE;
+		case SYS_POWER_OFF:
+			if(global_gauge_info_ptr->cfg_items.log_switch == 1)
+			{
+				global_gauge_info_ptr->store_gauge_info_switch_sav = global_gauge_info_ptr->cfg_items.log_switch;
+				global_gauge_info_ptr->cfg_items.log_switch = 0;
+			}
+			GAUGE_INFO("log_switch = %d\n",global_gauge_info_ptr->cfg_items.log_switch);
+			/*
+			 * chenbo@20150514
+			 * restore last soc during discharging,
+			 * if soc jump from some soc(>1%) to zero.
+			 */
+			if (global_gauge_info_ptr->soc_show == 0 &&
+					global_gauge_info_ptr->soc_last > 0) {
+				global_gauge_info_ptr->soc_show = global_gauge_info_ptr->soc_last;
+				store_soc(global_gauge_info_ptr);
+			}
+			return NOTIFY_OK;
+		default:
+			return NOTIFY_DONE;
 	}
 }
 static struct notifier_block atc260x_suspend_notify = {
@@ -2910,7 +2994,7 @@ static  int atc260x_gauge_probe(struct platform_device *pdev)
 	struct atc260x_dev *atc260x = dev_get_drvdata(pdev->dev.parent);
 	struct atc260x_gauge_info *info;
 	int ret;
-	
+
 	info = kzalloc(sizeof(struct atc260x_gauge_info), GFP_KERNEL);
 	if (info == NULL)
 		return -ENOMEM;	
@@ -2921,16 +3005,16 @@ static  int atc260x_gauge_probe(struct platform_device *pdev)
 		GAUGE_ERR("[%s] error kfifo_alloc\n", __func__);
 		goto free;
 	}
-	
+
 	info->atc260x = atc260x;
 	info->node = pdev->dev.of_node;
 	global_gauge_info_ptr = info;
 	first_store_gauge_info = 1;
 
 	mutex_init(&info->lock);
-	
+
 	platform_set_drvdata(pdev, info);
-	
+
 	ret = gauge_create_sysfs(&pdev->dev);
 	if (ret)
 	{
@@ -2945,11 +3029,11 @@ static  int atc260x_gauge_probe(struct platform_device *pdev)
 	}
 	/*modified @2014-12-20*/
 	ocv_soc_table_init(info);
-	
-   	if (init_gauge(info))
+
+	if (init_gauge(info))
 	{
 		GAUGE_ERR("init_gauge failed!\n");
-	 	goto free_fifo;
+		goto free_fifo;
 	}
 
 	set_callback();
@@ -2971,12 +3055,12 @@ static  int atc260x_gauge_probe(struct platform_device *pdev)
 		GAUGE_ERR("[%s] failed to create work queue\n", __func__);
 		goto remove_sysfs;
 	}
-	
+
 	INIT_DELAYED_WORK(&info->work, gauge_update);
 	queue_delayed_work(info->wq, &info->work, 0 * HZ);
 
 	return 0;
-	
+
 remove_sysfs:
 	gauge_remove_sysfs(&pdev->dev);
 free_fifo:
@@ -2984,7 +3068,7 @@ free_fifo:
 free:
 	kfree(info);
 
-	 return ret;
+	return ret;
 }
 
 static  int atc260x_gauge_remove(struct platform_device *pdev)
@@ -3021,10 +3105,10 @@ static int atc260x_gauge_resume(struct platform_device *pdev)
 
 	info->cfg_items.log_switch = info->store_gauge_info_switch_sav;
 	GAUGE_DBG("=====resume:switch= %d\n",info->cfg_items.log_switch);
-	
- 	queue_delayed_work(info->wq, &info->work, 0 * HZ);
-	
- 	return 0;
+
+	queue_delayed_work(info->wq, &info->work, 0 * HZ);
+
+	return 0;
 }
 static void atc260x_gauge_shutdown(struct platform_device *pdev)
 {
