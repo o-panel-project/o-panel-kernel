@@ -1994,7 +1994,7 @@ int atc260x_set_charger_current(int new, int *old)
 	*old = get_chg_current_now();
 	current_binary = atc260x_real_current_to_binary(charger,new / 100);	
 	charger->set_constant_current(charger, current_binary);
-	pr_info("[%s]the current set to be:%d(%d)\n",__func__,current_binary,new);
+//	pr_info("[%s]the current set to be:%d(%d)\n",__func__,current_binary,new); //remove by bill
 
 	return 0;
 }
