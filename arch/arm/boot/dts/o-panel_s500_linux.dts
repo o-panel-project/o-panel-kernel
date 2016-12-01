@@ -791,7 +791,7 @@
 	i2c@b0178000 {
 		i2c_num = <2>;
 		clock-frequency = <400000>;
-		status = "disabled";
+		status = "okay";
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c2_state_default>;
 
