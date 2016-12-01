@@ -910,7 +910,7 @@
 		//local-mac-address = [ 00 18 fe 66 66 66 ];   /* if random address is enable,the local address will be unuseful*/
 		max-frame-size = <1518>;
 
-		status = "okay";
+		status = "disabled";
 		compatible = "actions,owl-ethernet";
 		
 		phy0: ethernet-phy@0 {
