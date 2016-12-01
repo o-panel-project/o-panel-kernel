@@ -758,7 +758,7 @@
 			compatible = "ft5x06";
 			reg = <0x38>;
 			tp_vcc = "ldo5";
-			reset_gpios = <&gpio 35 1>; /*GPIOB(3) 0: high, 1: low*/
+			reset_gpios = <&gpio 32 1>; /*GPIOB(0) 0: high, 1: low*/
 			max_points = <10>;
 			x_pixel = <1280>;
 			y_pixel = <800>;
@@ -1207,15 +1207,15 @@
 		compatible = "owl-ctp-detect";
 		i2c_adapter_id = <1>;
 		tp_vcc = "ldo5";
-		//reset_gpios = <&gpio 35 1>;    /*GPIOB(3) 0: high, 1: low*/
-		//interrupt-parent = <&sirq>;
-		//interrupts =< 0 0x4 >; /*SIRQ0*/
+		rst_gpios = <&gpio 32 1>;    /*GPIOB(0) 0: high, 1: low*/
+		interrupt-parent = <&sirq>;
+		interrupts =< 0 0x4 >; /*SIRQ0*/
 		vol_range = <3100000 3110000>;
 
 		ctp_detect_list {
 			compatible = "ctp_detect_list";
 			ICN83XX =  <0>;
-			GSLX6X0 =  <1>;
+			GSLX6X0 =  <0>;
 			FT52-406 = <0>;
 			FT5606 =   <0>;
 			GT813 =    <0>;
@@ -1226,6 +1226,7 @@
 			ILITEK =   <0>;
 			ili2672 =  <0>;
 			ft5x06 =   <0>;
+			ft5526 =   <1>;
 			MT395 =    <0>;
 			NT1100X =  <0>;
 			SSD254X =  <0>;

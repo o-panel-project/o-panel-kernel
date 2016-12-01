@@ -96,8 +96,8 @@ static struct regulator *regulator_init(const char *name, int minvol, int maxvol
 
 static inline void regulator_deinit(struct regulator *power)
 {
-	regulator_disable(power);
-	regulator_put(power);
+	//regulator_disable(power);
+	//regulator_put(power);
 }
 
 #if CFG_TP_USE_CONFIG

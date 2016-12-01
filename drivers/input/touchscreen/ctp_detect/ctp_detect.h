@@ -137,6 +137,16 @@ struct ctp_device ctp_device_list[]=
 		0,				//5.chipid寄存器
 		0,				//6.chipid
 	},	
+	//ft5526
+	{
+		"ft5526",			//0.IC名称
+		"ctp_ft5x06.ko",	//1.ko名称
+		true,				//2.是否扫描
+		0x38,				//3.i2c地址
+		true,	//确实无			//4.有chipid
+		0xA3,				//5.chipid寄存器
+		0x54,
+	},
 	//MT395
 	{
 		"MT395",			//0.IC名称
