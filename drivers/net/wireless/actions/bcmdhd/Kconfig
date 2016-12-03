@@ -7,21 +7,21 @@ config BCMDHD
 config BCMDHD_FW_PATH
 	depends on BCMDHD
 	string "Firmware path"
-	default "/lib/firmware/ap6212/fw_bcm43438a0.bin"
+	default "/lib/firmware/ap6330/fw_bcm40183b2.bin"
 	---help---
 	  Path to the firmware file.
 
 config BCMDHD_NVRAM_PATH
 	depends on BCMDHD
 	string "NVRAM path"
-	default "/lib/firmware/ap6212/nvram_ap6212.txt"
+	default "/lib/firmware/ap6330/nvram_ap6330.txt"
 	---help---
 	  Path to the calibration file.
 
 config BCMDHD_CONFIG_PATH
 	depends on BCMDHD
 	string "Config path"
-	default "/lib/firmware/ap6212/config.txt"
+	default "/lib/firmware/ap6330/config.txt"
 	---help---
 	  Path to the driver configuration file.
 
