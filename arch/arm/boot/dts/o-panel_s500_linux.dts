@@ -536,7 +536,7 @@
                                 pinctrl-names = "default";
                                 pinctrl-0 = <&i2s0_state_default>;				
 				//earphone_detect_gpios = <&gpio 21 0>; /*0: high, 1: low hr280ac GPIOA21 0*/
-				speaker_en_gpios = <&gpio 126 0>; /*hr280ac GPIOD(30) 0: high, 1: low*/
+				speaker_en_gpios = <&gpio 114 0>; /*hr280ac GPIOD(30) 0: high, 1: low*/
 				earphone_output_mode = <0>; /*0: direct mode, 1: undirect mode*/
 				mic_num = <1>; /*just suport 1, 2*/
 				mic0_gain = < 0xf 0xf >; /*<Lchannel,Rchannel> [0x0~0xF]*/
@@ -705,8 +705,8 @@
 			ldo7: ldo7{
 				compatible = "actions,atc2603c-ldo7","actions,atc2603c-ldo";
 				regulator-name = "ldo7";
-				regulator-min-microvolt  = <1800000>;
-				regulator-max-microvolt = <1800000>;
+				regulator-min-microvolt  = <2000000>;
+				regulator-max-microvolt = <2000000>;
 				regulator-always-on;
 				regulator-suspend-off;
 			};
@@ -1181,8 +1181,8 @@
 	wifi_bt_power_ctl {
 		compatible = "wifi,bt,power,ctl";
 		//bt_power_gpio = <&gpio 16 0>;/*GPIOA20, high active*/   /*BT_WAKE*/
-		wifi_bt_power_gpios = <&gpio 120 0>; /* GPIOB1 */
-		bt_en_gpios = <&gpio 28 0>; /*GPIOB2, high active*/ 
+		wifi_bt_power_gpios = <&gpio 126 0>; /* GPIOD30 */
+		bt_en_gpios = <&gpio 115 0>; /*GPIOB2, high active*/ 
 		wifi_en_gpios = <&gpio 21 0>; /* GPIOB0 */
 	};
 

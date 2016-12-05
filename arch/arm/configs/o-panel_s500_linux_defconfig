@@ -1359,9 +1359,9 @@ CONFIG_RTL8723BS_VQ0=m
 CONFIG_RTL8723BU=m
 CONFIG_RTL8188ETV=m
 CONFIG_BCMDHD=m
-CONFIG_BCMDHD_FW_PATH="/lib/firmware/ap6212/fw_bcm43438a0.bin"
-CONFIG_BCMDHD_NVRAM_PATH="/lib/firmware/ap6212/nvram_ap6212.txt"
-CONFIG_BCMDHD_CONFIG_PATH="/lib/firmware/ap6212/config.txt"
+CONFIG_BCMDHD_FW_PATH="/lib/firmware/ap6330/fw_bcm40183b2.bin"
+CONFIG_BCMDHD_NVRAM_PATH="/lib/firmware/ap6330/nvram_ap6330.txt"
+CONFIG_BCMDHD_CONFIG_PATH="/lib/firmware/ap6330/config.txt"
 # CONFIG_ATH_CARDS is not set
 # CONFIG_B43 is not set
 # CONFIG_B43LEGACY is not set
