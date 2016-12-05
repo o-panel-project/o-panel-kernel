@@ -1059,32 +1059,32 @@
 		hw-set = <&dsi_reg>;
 
 		dsi_reg:val{	
-		dsi_ctrl =< 0x1340>;
-		dsi_size = <0x3000000>;
-		dsi_color = <0xff0000>;
-		dsi_rgbht0 = <0x150b4>;
-		dsi_rgbht1 = <0x3e8>;
-		dsi_rgbvt0 = <0x1f0a319>;
-		dsi_rgbvt1 =<0x15>;
-		dsi_pack_cfg = <0x0>;
-		dsi_pack_header =<0x1002>;
-		dsi_vedio_cfg = <0x30c>;
-		dsi_phy_t0 = <0x125b>;
-		dsi_phy_t1 =<0x1b0b>;
-		dsi_phy_t2 = <0x2f06>;
-		dsi_phy_ctrl = <0xfc94>;
-		dsi_pin_map = <0x688>;
-		cmu_dsipll_clk = <0x12b01>;
+			dsi_ctrl =< 0x1340>;
+			dsi_size = <0x3000000>;
+			dsi_color = <0xff0000>;
+			dsi_rgbht0 = <0x150b4>;
+			dsi_rgbht1 = <0x3e8>;
+			dsi_rgbvt0 = <0x1f0a319>;
+			dsi_rgbvt1 =<0x15>;
+			dsi_pack_cfg = <0x0>;
+			dsi_pack_header =<0x1008>;
+			dsi_vedio_cfg = <0x30c>;
+			dsi_phy_t0 = <0x125b>;
+			dsi_phy_t1 =<0x1b0b>;
+			dsi_phy_t2 = <0x2f06>;
+			dsi_phy_ctrl = <0xfc94>;
+			dsi_pin_map = <0x688>;
+			cmu_dsipll_clk = <0x12b01>;
 
 
 		};
 		
-		dsi_mode:mode@1366x768p60 {
+		dsi_mode:mode@1368x768p60 {
 			refresh = <60>;
-			xres = <1366>;
+			xres = <1368>;    // cannot set to 1366, it must a nultiple of 8,
 			yres = <768>;
 			/*in pico second, 0.000 000 000 001s*/
-			pixclock = <14430>;
+			pixclock = <14430>; // maybe can try 14285
 			left_margin = <40>;
 			right_margin = <28>;
 			upper_margin = <15>;
