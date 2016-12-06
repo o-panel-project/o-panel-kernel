@@ -194,6 +194,8 @@ struct asoc_codec_resource {
 
 static int earphone_is_in_for_irq(void);
 static irqreturn_t earphone_detect_irq_handler(int irq, void *data);
+/* set i2s rx/tx clk for antipop */
+extern void snd_antipop_i2s_clk_set(void);
 
 static struct delayed_work dwork_adc_detect;
 
@@ -289,28 +291,22 @@ static void ramp_undirect(unsigned int begv, unsigned int endv) {
 	
 	set_dai_reg_base(I2S_SPDIF_NUM);
 	while (endv < begv) {
-		count++;
-		if ((count & 0x7F) == 0) {
-			mdelay(1);
-		}
 		val = snd_dai_readl(I2S_FIFOCTL);
 		while ((val & (0x1 << 8)) != 0) {
 			val = snd_dai_readl(I2S_FIFOCTL);
 		};
 		snd_dai_writel(endv, I2STX_DAT);
-		endv -= 0x36000;
+		//endv -= 0x36000;
+		endv -= 0x15600;
 	}
 	while (begv <= endv) {
-		count++;
-		if ((count & 0x7F) == 0) {
-			mdelay(1);
-		}
 		val = snd_dai_readl(I2S_FIFOCTL);
 		while ((val & (0x1 << 8)) != 0) {
 			val = snd_dai_readl(I2S_FIFOCTL);
 		};
 		snd_dai_writel(endv, I2STX_DAT);
-		endv -= 0x36000;
+		//endv -= 0x36000;
+		endv -= 0x15600;
 	}
 }
 
@@ -901,24 +897,19 @@ static void pa_up(struct snd_soc_codec *codec) {
 	i)	开启pa输出级en，断开ramp connect，LOOP2 Disable。
 	*/
 
+	/* set i2s tx/rx clk 11.2896MHz for antipop */
+	snd_antipop_i2s_clk_set();
 	set_dai_reg_base(I2S_SPDIF_NUM);
-	/* i2stx fifo en */
-	snd_dai_writel(snd_dai_readl(I2S_FIFOCTL) | 0x3, I2S_FIFOCTL);
-	/* i2s tx en */
-	snd_dai_writel(snd_dai_readl(I2S_CTL) | 0x3, I2S_CTL);
+	/* i2s rx/tx fifo en */
+	snd_dai_writel(snd_dai_readl(I2S_FIFOCTL) | 0x160b, I2S_FIFOCTL);
+	/* 4-wire mode, i2s rx clk select I2S_CLK1, i2s rx/tx en */
+	snd_dai_writel(snd_dai_readl(I2S_CTL) | 0xc03, I2S_CTL);
+	/* DAC FL&FR volume contrl */
 	snd_soc_write(codec, DAC_VOLUMECTL0, 0xbebe);
 	snd_soc_write(codec, DAC_ANALOG0, 0);
 	snd_soc_write(codec, DAC_ANALOG1, 0);
 	snd_soc_write(codec, DAC_ANALOG2, 0);
 	snd_soc_write(codec, DAC_ANALOG3, 0);
-
-	if (direct_drive_disable == 0) {
-		snd_dai_writel(0x1 << 31, I2STX_DAT);
-		snd_dai_writel(0x1 << 31, I2STX_DAT);
-	} else {
-		snd_dai_writel(0x7ffffe00, I2STX_DAT);
-		snd_dai_writel(0x7ffffe00, I2STX_DAT);
-	}
 
 	/* 2.0-Channel Mode */
 	snd_dai_writel(snd_dai_readl(I2S_CTL) & ~(0x7 << 4), I2S_CTL);
@@ -935,17 +926,25 @@ static void pa_up(struct snd_soc_codec *codec) {
 		/* dac_2ch FL&FR enable */
 		snd_soc_update_bits(codec, DAC_DIGITALCTL, 0x3, 0x3);
 	}
-	/* da_a  EN,PA EN,all bias en */
-	snd_soc_write(codec, DAC_ANALOG3, 0x4b7);
+
 	/* DAC PA BIAS */
 	snd_soc_write(codec, DAC_ANALOG0, 0x26b3);
-	/* PA VOLUME=0 */
-	snd_soc_write(codec, DAC_ANALOG1, 0x0000);
 	/* */
 	snd_soc_write(codec, DAC_ANALOG2, 0x03);
-	
-	if (direct_drive_disable != 0) 
-	{	
+
+	/* MIC mute */
+	snd_soc_update_bits(codec, DAC_ANALOG1, 0x1<<15, 0);
+	/* FM mute */
+	snd_soc_update_bits(codec, DAC_ANALOG1, 0x1<<14, 0);
+	/* DAC FL&FR playback mute */
+	snd_soc_update_bits(codec, DAC_ANALOG1, 0x1<<10, 0);
+	/* headphone PA VOLUME=0 */
+	snd_soc_update_bits(codec, DAC_ANALOG1, 0x3f, 0);
+
+	/* da_a  EN,PA EN,all bias en */
+	snd_soc_write(codec, DAC_ANALOG3, 0x4b7);
+
+	if (direct_drive_disable != 0) {
 		/* da_a  EN,PA EN,OUTPSTAGE DIS,all bias en,loop2 en*/
 		snd_soc_write(codec, DAC_ANALOG3, 0x6b7);
 	}
@@ -967,39 +966,88 @@ static void pa_up(struct snd_soc_codec *codec) {
 		snd_soc_update_bits(codec, DAC_ANALOG2, 0x1<<3, 0);
 		//ramp_direct(0x80000000, 0x7ffffe00);
 	} else {
-		//non direct mode
-		msleep(100);
+		/* non direct mode */
+		msleep(50);
+		/* write high volume data */
+		{
+			unsigned int val = 0;
+			int  i = 0;
+			set_dai_reg_base(I2S_SPDIF_NUM);
+
+			while (i < 900) {
+				val = snd_dai_readl(I2S_FIFOCTL);
+				while ((val & (0x1 << 8)) != 0) {
+					val = snd_dai_readl(I2S_FIFOCTL);
+				}
+				snd_dai_writel(0x7fffffff, I2STX_DAT);
+
+				i++;
+			}
+
+			mdelay(20);
+		}
+
 		/* PA RAMP2 CONNECT */
-		snd_soc_update_bits(codec, DAC_ANALOG2 , 0x1<<4, 0x1<<4);
-		
+		snd_soc_update_bits(codec, DAC_ANALOG2 , 0x1<<9, 0x1<<9);
+		mdelay(50);
+
+		/* write ramp data for antipop */
 		ramp_undirect(0x80000000, 0x7ffffe00);
+		msleep(300);
+
+#if 0
+		/* write 0 data */
+		{
+			unsigned int val = 0;
+			int  i = 0;
+			set_dai_reg_base(I2S_SPDIF_NUM);
+
+			while (i < 900) {
+				val = snd_dai_readl(I2S_FIFOCTL);
+				while ((val & (0x1 << 8)) != 0) {
+					val = snd_dai_readl(I2S_FIFOCTL);
+				}
+				snd_dai_writel(0x0, I2STX_DAT);
+
+				i++;
+			}
+
+			mdelay(20);
+		}
+#endif
+
 	}
-	
-	if (direct_drive_disable != 0) 
-	{
-		//non direct mode
-		msleep(400);
-		/* out stage en */
-		/*EN,PA EN,OUTPSTAGE EN,all bias en,loop2 en*/
+
+	if (direct_drive_disable != 0) {
+		/* non direct mode */
+
+		/* enable PA FR&FL output stage */
 		snd_soc_update_bits(codec, DAC_ANALOG3, 0x1<<3, 0x1<<3);
-		msleep(100);
-		
-		/*EN,PA EN,OUTPSTAGE EN,all bias en,loop2 DISABLE */
+		/* disable antipop2 LOOP2 */
 		snd_soc_update_bits(codec, DAC_ANALOG3, 0x1<<9, 0);
-		/* ramp disconnect */
+		/* mute DAC playback */
+		snd_soc_update_bits(codec, DAC_ANALOG1, 0x1<<10, 0);
+		/* set volume 111111*/
+		snd_soc_update_bits(codec, DAC_ANALOG1, 0x3f, 0x3f);
+		/* disable ramp connect */
 		snd_soc_update_bits(codec, DAC_ANALOG2, 0x1<<9, 0);
 	}
-	
+#if 0
 	snd_dai_writel(0x0, I2STX_DAT);
 	snd_dai_writel(0x0, I2STX_DAT);
+#endif
 	msleep(20);
 }
 
 
 static void atc2603c_pa_down(struct snd_soc_codec *codec)
 {
-	if(hw_init_flag == true)
-	{	
+	/* delay for antipop before pa down */
+	/* close PA OUTPSTAGE EN */
+	snd_soc_update_bits(codec, DAC_ANALOG3, 0x1<<3, 0x0);
+	//mdelay(100);
+
+	if (hw_init_flag == true) {
         	if (direct_drive_disable == 0) {
         		/* antipop_VRO Resistant Connect */
         		snd_soc_update_bits(codec, DAC_ANALOG2, 0x3<<3, 0x3<<3);
@@ -1011,6 +1059,7 @@ static void atc2603c_pa_down(struct snd_soc_codec *codec)
         		snd_soc_update_bits(codec, DAC_ANALOG2, 0x1<<3, 0);
         		
         	} else {
+#if 0
         		snd_dai_writel(snd_dai_readl(I2S_FIFOCTL) | 0x3, I2S_FIFOCTL);
         		snd_dai_writel(snd_dai_readl(I2S_CTL) | 0x3, I2S_CTL);
         		//act_snd_writel(act_snd_readl(CO_AUDIOINOUT_CTL) | (0x1 << 1), CO_AUDIOINOUT_CTL);
@@ -1030,6 +1079,57 @@ static void atc2603c_pa_down(struct snd_soc_codec *codec)
         		snd_soc_update_bits(codec, DAC_ANALOG2, 0x1 << 9, 0x1<<9);
         		ramp_undirect(0x80000000, 0x7ffffe00);
 			msleep(600);
+#endif
+			
+			//set_dai_reg_base(CMU_NUM);
+			//snd_dai_writel(0x330011, 0x14);
+			snd_antipop_i2s_clk_set();
+			set_dai_reg_base(I2S_SPDIF_NUM);
+			snd_dai_writel(snd_dai_readl(I2S_FIFOCTL) | 0x3, I2S_FIFOCTL); 
+			snd_dai_writel(snd_dai_readl(I2S_CTL) | 0x3, I2S_CTL); 
+			//snd_dai_writel(snd_dai_readl(AUDIOINOUT_CTL) | (0x1 << 1), AUDIOINOUT_CTL);
+			
+			snd_soc_update_bits(codec, AUDIOINOUT_CTL, 0x1 << 1, 0x1 << 1);
+			
+			snd_soc_write(codec, DAC_VOLUMECTL0, 0xbebe); 
+									
+			/* PA LOOP2  disable */ 
+			snd_soc_update_bits(codec, DAC_ANALOG3, 0x1<<9, 0x0<<9); 
+			/* 隔直电容Discharge 开启 */ 
+			snd_soc_update_bits(codec, DAC_ANALOG2, 0x1<<8, 0x1<<8); 
+									
+			 /* playback mute 关闭 */ 
+			snd_soc_update_bits(codec, DAC_ANALOG1, 0x1<<10, 0x0<<10);
+			
+			 /* 1.6VPP档位 */ 
+			snd_soc_update_bits(codec, DAC_ANALOG1, 0x1<<6, 0x1<<6);
+			
+			
+			 /*PA output stage 关闭*/ 
+			snd_soc_update_bits(codec, DAC_ANALOG3, 0x1<<3, 0x0<<3);
+			
+			  /*PA disable */ 
+			snd_soc_update_bits(codec, DAC_ANALOG3, 0x1<<2, 0x0<<2);
+			
+			//snd_dai_writel(0x7ffffe00, I2STX_DAT); 
+			//snd_dai_writel(0x7ffffe00, I2STX_DAT); 
+			//msleep(300); 
+			u32	count = 0;
+			while(count<0x120)
+			{
+				u32 val = snd_dai_readl(I2S_FIFOCTL);
+				while ((val & (0x1 << 8)) != 0) {
+					val = snd_dai_readl(I2S_FIFOCTL);
+				};
+				snd_dai_writel(0x7fffff00, I2STX_DAT);
+				count++;
+			}
+			/* ramp Connect EN */ 
+			snd_soc_update_bits(codec, DAC_ANALOG2, 0x1 << 9, 0x1<<9); 
+			//while(1);
+			ramp_undirect(0x80000000, 0x7ffffe00); 
+			msleep(50);			
+
         	}
 		snd_soc_write(codec, DAC_VOLUMECTL0, 0);
 		hw_init_flag = false;
@@ -1324,6 +1424,8 @@ static int atc2603c_audio_hw_params(struct snd_pcm_substream *substream,
 		//snd_err("%s %d\n", __FILE__,__LINE__);
 		snd_soc_update_bits(codec,
 			AUDIOINOUT_CTL, 0x01 << 1, 0x01 << 1);
+		/* DAC FL&FR playback mute */
+		snd_soc_update_bits(codec, DAC_ANALOG1, 0x1<<10, 0x0);
 		snd_soc_update_bits(codec,
 			DAC_ANALOG3, 0x03, 0x03);
 #ifdef CONFIG_SND_UBUNTU
