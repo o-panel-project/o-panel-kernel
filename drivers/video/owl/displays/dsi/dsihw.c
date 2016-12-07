@@ -998,7 +998,7 @@ int owl_dsi_display_enable(struct owl_dss_device *dssdev)
 		goto err_mgr_enable;
 		
 	
-	if(!dsihw_check_boot_dsi_inited(pdev)){
+	if(dsihw_check_boot_dsi_inited(pdev)){
 		dsihw_display_init_dsi();	
 		dsihw_single_enable(pdev,true);	
 		

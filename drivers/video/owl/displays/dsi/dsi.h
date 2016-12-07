@@ -6,7 +6,7 @@
 #include <linux/platform_device.h>
 #include <video/owldss.h>
 
-	#define DSI_PRINTa
+	#define DSI_PRINT
 	#ifdef DSI_PRINT
 	#define DEBUG_DSI(format, ...) \
 		do { \
