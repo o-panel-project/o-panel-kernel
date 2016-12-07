@@ -1885,8 +1885,8 @@ static int ft5x06_probe(struct i2c_client *client,
 //* Modify by Hayden.Hu -- begin
 	set_bit(EV_KEY, input->evbit);
 	set_bit(BTN_TOUCH, input->keybit);
-	input_set_abs_params(input, ABS_X, 0, 1024, 0, 0);
-	input_set_abs_params(input, ABS_Y, 0, 600, 0, 0);
+	input_set_abs_params(input, ABS_X, 0, 1368, 0, 0);
+	input_set_abs_params(input, ABS_Y, 0, 768, 0, 0);
 	input_set_abs_params(input, ABS_PRESSURE, 0, 1, 0, 0);
 #if CFG_FT_USE_CONFIG
 	input_set_abs_params(input, ABS_Y, 0, ftdev->ftconfig->max.y, 0, 0);
