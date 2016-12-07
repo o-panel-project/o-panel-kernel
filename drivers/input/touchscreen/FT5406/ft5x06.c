@@ -589,10 +589,11 @@ int fts_ctpm_auto_upg(struct i2c_client *client)
     uc_host_fm_ver = fts_ctpm_get_i_file_ver();
 	
     printk("[FTS]uc_tp_fm_ver=%x uc_host_fm_ver=%x\n",uc_tp_fm_ver,uc_host_fm_ver);
-
+#if 0
     if ( uc_tp_fm_ver == 0xa6  ||   //the firmware in touch panel maybe corrupted
          uc_tp_fm_ver < uc_host_fm_ver //the firmware in host flash is new, need upgrade
         )
+#endif
 
     {
         msleep(100);
@@ -1166,12 +1167,7 @@ static int ft5x06_read_points( struct ft5x06_device *ftdev,
     }
     //printk(KERN_ERR"number:%d\n", number);
     if ( number ) {
-        for ( i = 1, cnt = 0; cnt < number; i += POINT_DATA_LEN, cnt++ ) {
-#if 0
-#ifdef CONFIG_GL5201_AT716
-					int tmp;
-#endif
-#endif            
+        for ( i = 1, cnt = 0; cnt < number; i += POINT_DATA_LEN, cnt++ ) {           
             type = VALUE_TYPE(data->rawData[i]);
             if ( NONE_EVENT == type )
                 continue;
@@ -1180,14 +1176,6 @@ static int ft5x06_read_points( struct ft5x06_device *ftdev,
                                         data->rawData[i+ FT5X06_X_OFFSET + 1]);
             y = VALUE_XY( data->rawData[i + FT5X06_Y_OFFSET], 
                                         data->rawData[i + FT5X06_Y_OFFSET + 1]);
-#if 0
-#ifdef CONFIG_GL5201_AT716           
-								tmp = x;
-								x = y;
-								//y= 480 - tmp;
-								y = tmp;
-#endif
-#endif
     //printk("raw:x:%d, y:%d\n", x, y);
 #if CFG_FT_USE_CONFIG
             if ( x <= cfg_dts.xMax && y <= cfg_dts.yMax ) {
@@ -1209,20 +1197,20 @@ static int ft5x06_read_points( struct ft5x06_device *ftdev,
                     y = cfg_dts.yMax - y;
                 }
                 
-                if(cfg_dts.rotate == 90){//anticlockwise 90 angle
-                    int tmp;
-                    tmp = x;
-                    x = y;
-                    y = cfg_dts.xMax - tmp;
-                }else if(cfg_dts.rotate == 180){//anticlockwise 180 angle
-        	        x = cfg_dts.xMax - x;
-		            y = cfg_dts.yMax - y;
-                }else if(cfg_dts.rotate == 270){//anticlockwise 270 angle
-        	        int tmp;
-		            tmp = x;
-		            x = cfg_dts.yMax-y;
-		            y = tmp;
-                } 
+                //if(cfg_dts.rotate == 90){//anticlockwise 90 angle
+                //    int tmp;
+                //    tmp = x;
+                //    x = y;
+                //    y = cfg_dts.xMax - tmp;
+                //}else if(cfg_dts.rotate == 180){//anticlockwise 180 angle
+        	//        x = cfg_dts.xMax - x;
+	        //        y = cfg_dts.yMax - y;
+                //}else if(cfg_dts.rotate == 270){//anticlockwise 270 angle
+        	//        int tmp;
+		//            tmp = x;
+		//            x = cfg_dts.yMax-y;
+		//            y = tmp;
+                //} 
 
             }
 #endif
@@ -1308,52 +1296,48 @@ static int ft5x06_report_event(struct ft5x06_device *ftdev, struct ft5x06_point*
 #ifdef PROTOCOL_B
 static int ft5x06_report_b(struct ft5x06_device *ftdev)
 {
-    int i = 0;
-    int  ts_press = 0;
-	static int  ts_release = 0;
-    struct ft5x06_data *data = ftdev->ftdata;
-    struct input_dev *input = ftdev->input_dev;
+		int i = 0;
+		int  ts_press = 0;
+		static int  ts_release = 0;
+		struct ft5x06_data *data = ftdev->ftdata;
+		struct input_dev *input = ftdev->input_dev;
+		struct ft5x06_point*pos = &data->points[i];
 
     if( !ftdev || !ftdev->ftdata )
         return -EFAULT;
- //   printk("b: validPointCnt is %d\n",data->validPointCnt);
- //   if ( data->validPointCnt ){
-	    for ( i = 0; i < data->validPointCnt; i++ ) 
+		if ( data->validPointCnt == 0 )
 		{
-		 // printk("!!!%d  x %d y %d--type %d\n",data->points[i].id,data->points[i].x,data->points[i].y,data->points[i].type);
-		  //if(data->points[i].type != RELEASE_EVENT){
-		  //  printk("id is  %d\n",data->points[i].id);
-		input_mt_slot(input, data->points[i].id);
-		input_mt_report_slot_state(input, MT_TOOL_FINGER, true);
-	
-		input_report_abs(input, ABS_MT_TOUCH_MAJOR, 1);
-		input_report_abs(input, ABS_MT_POSITION_X, data->points[i].x);
-		input_report_abs(input, ABS_MT_POSITION_Y, data->points[i].y);
-		input_report_abs(input, ABS_MT_PRESSURE,100);
-        //printk("x y %d--%d",current_events[index].x,current_events[index].y);
-        ts_press |= 0x01 << data->points[i].id;
-       // printk("ts_press is %d id is %d\n",ts_press,data->points[i].id );
-		//}
-//		else{
-//		// printk("!!!!!!!!!!!!release %d \n",data->points[i].id);
-//		input_mt_slot(input, data->points[i].id);
-//		input_mt_report_slot_state(input, MT_TOOL_FINGER, false);
-//		    }
-       
+                        input_report_abs(input, ABS_PRESSURE, 0);
+                        input_report_key(input, BTN_TOUCH, 0);
+                        input_sync(input);
+		}	
+		//* Modify by Hayden.Hu -- begin
+		//for ( i = 0; i < data->validPointCnt; i++ ) 
+		else
+		{
+			if ( pos )
+			{
+				switch( pos->type ) {
+					case PRESS_EVENT:
+					case CONTACT_EVENT:
+						input_report_abs(input, ABS_X, data->points[i].x);
+						input_report_abs(input, ABS_Y, data->points[i].y);
+						input_report_abs(input, ABS_PRESSURE, 1);
+						input_report_key(input, BTN_TOUCH, 1);
+						input_sync(input);
+						break;
+					case RELEASE_EVENT:
+						input_report_abs(input, ABS_PRESSURE, 0);
+						input_report_key(input, BTN_TOUCH, 0);
+						input_sync(input);
+						break;
+					default :
+						printk( "ft5x06_report_b ohoh\n" );
+				}
+			}
 		}
-        ts_release &= ts_release ^ ts_press;
-   // }else{
-   // printk("%x tp_release  %x\n",ts_press,ts_release);
-	for ( i = 0; i < FT5X06_MAX_POINT; i++ ) {
-		if ( ts_release & (0x01<<i) ) {	
-		 //   printk("release %d",i);	
-			input_mt_slot(input,i);
-			input_mt_report_slot_state(input, MT_TOOL_FINGER, false);			
-		    }
-	    }
-    //}
-	ts_release = ts_press;    
-	input_sync(ftdev->input_dev);		
+		//* Modify by Hayden.Hu -- end
+
     return 0;
 }
 #else
@@ -1409,7 +1393,7 @@ static int ft5x06_report_release(struct ft5x06_device *ftdev)
         return -EFAULT;
 
     for ( i = 0; i < data->lastValidCnt; i++ ) {        
-        input_report_key( ftdev->input_dev, BTN_TOUCH, 0);
+	input_report_key( ftdev->input_dev, BTN_TOUCH, 0);
         input_report_abs( ftdev->input_dev, ABS_MT_TOUCH_MAJOR, 0);
         input_report_abs( ftdev->input_dev, ABS_MT_WIDTH_MAJOR, 0);
         input_report_abs( ftdev->input_dev, ABS_MT_PRESSURE, 0);
@@ -1473,6 +1457,7 @@ static int ft5x06_init_config(struct i2c_client *client, struct ft5x06_config *f
     return err;
 }
 
+// 处理工作队列
 static void ft5x06_work(struct work_struct *work)
 {
     struct ft5x06_device *ftdevice = container_of(work, struct ft5x06_device, work);
@@ -1484,11 +1469,9 @@ static void ft5x06_work(struct work_struct *work)
     #ifdef PROTOCOL_B
          ft5x06_report_b(ftdevice);
     #else
- 	if ( !ret ){
-
-         ft5x06_report(ftdevice);
-
-    }
+			 		if ( !ret ){
+			         ft5x06_report(ftdevice);
+			    }
     #endif
 	
 }
@@ -1896,45 +1879,29 @@ static int ft5x06_probe(struct i2c_client *client,
     ///////////////
  
     __set_bit(INPUT_PROP_DIRECT,input->propbit);
-	input_mt_init_slots(input, FT5X06_MAX_POINT, 0);
-//	input_set_abs_params(input_dev,ABS_MT_POSITION_X,  0, SCREEN_MAX_X, 0, 0);
-//	input_set_abs_params(input_dev,ABS_MT_POSITION_Y,  0, SCREEN_MAX_Y, 0, 0);
-//	input_set_abs_params(input_dev,ABS_MT_TOUCH_MAJOR, 0, PRESS_MAX, 0, 0);
-//	input_set_abs_params(input_dev,ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
+
     ///////////////
     set_bit(EV_ABS, input->evbit);
-//    set_bit(ABS_MT_POSITION_X, input->absbit);
-//    set_bit(ABS_MT_POSITION_Y, input->absbit);
-    set_bit(ABS_MT_WIDTH_MAJOR, input->absbit);
-    set_bit(ABS_MT_TRACKING_ID, input->absbit);
+//* Modify by Hayden.Hu -- begin
+	set_bit(EV_KEY, input->evbit);
+	set_bit(BTN_TOUCH, input->keybit);
+	input_set_abs_params(input, ABS_X, 0, 1024, 0, 0);
+	input_set_abs_params(input, ABS_Y, 0, 600, 0, 0);
+	input_set_abs_params(input, ABS_PRESSURE, 0, 1, 0, 0);
+#if CFG_FT_USE_CONFIG
+	input_set_abs_params(input, ABS_Y, 0, ftdev->ftconfig->max.y, 0, 0);
+	input_set_abs_params(input, ABS_X, 0, ftdev->ftconfig->max.x, 0, 0);
+#endif
+//* Modify by Hayden.Hu -- end
+
 
     printk("ft5x06 probe v2.0 i file,FT5X0X_DOWNLOAD_FIRM=(%d)\n", FT5X0X_DOWNLOAD_FIRM);
+#if 0
 	#if (FT5X0X_DOWNLOAD_FIRM==1)
 printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 	fts_ctpm_auto_upg(client);
 	#endif
-//    set_bit(BTN_TOUCH, input->keybit);
-///    input_set_abs_params(input, ABS_MT_POSITION_X, 0, ftdev->ftconfig->max.x, 0, 0);
-//    input_set_abs_params(input, ABS_MT_POSITION_Y, 0, ftdev->ftconfig->max.y, 0, 0);
-#if CFG_FT_USE_CONFIG
-    if(cfg_dts.rotate == 90 || cfg_dts.rotate == 270)
-    {
-        input_set_abs_params(input, ABS_MT_POSITION_Y, 0, ftdev->ftconfig->max.x, 0, 0);
-        input_set_abs_params(input, ABS_MT_POSITION_X, 0, ftdev->ftconfig->max.y, 0, 0);
-    }
-    else{
-        input_set_abs_params(input, ABS_MT_POSITION_Y, 0, ftdev->ftconfig->max.y, 0, 0);
-        input_set_abs_params(input, ABS_MT_POSITION_X, 0, ftdev->ftconfig->max.x, 0, 0);
-    }    
-#else
-
-    input_set_abs_params(input, ABS_MT_POSITION_Y, 0, ftdev->ftconfig->max.y, 0, 0);
-    input_set_abs_params(input, ABS_MT_POSITION_X, 0, ftdev->ftconfig->max.x, 0, 0);
 #endif
-//    input_set_abs_params(input, ABS_MT_PRESSURE, 0, ftdev->ftconfig->max.weight, 0, 0);
-    input_set_abs_params(input, ABS_MT_TRACKING_ID, 0, FT5X06_MAX_POINT, 0, 0);   
-    input_set_abs_params(input, ABS_MT_WIDTH_MAJOR, 0, 100, 0, 0);
-    input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 100, 0, 0);
 	
     err = input_register_device(ftdev->input_dev);
     if ( err ) {

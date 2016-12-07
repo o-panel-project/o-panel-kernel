@@ -4,8 +4,8 @@
 
 #define CFG_FT_USE_CONFIG  1
 
-#define FT5X06_X_MAX            ( 1280 )
-#define FT5X06_Y_MAX            ( 800 )
+#define FT5X06_X_MAX            ( 1368 )
+#define FT5X06_Y_MAX            ( 768 )
 
 #define TP_ROTATE_DEFAULT 90
 #define TP_XREVERT 0
@@ -30,7 +30,7 @@
 #define FT5X06_POWER_MIN_VOL	(3100000)
 #define FT5X06_POWER_MAX_VOL	(3110000)
 
-#define FT5X06_RESET_PIN        OWL_GPIO_PORTB(3)
+#define FT5X06_RESET_PIN        OWL_GPIO_PORTB(0)
 #define I2C_CTPM_ADDRESS 0x38
 //#define FT5X0X_DOWNLOAD_FIRM    (R_TP_DOWNLOAD_FIRM)
 //#define FIRM_I_FILE_NAME	(R_TP_I_FILE_NAME)
@@ -111,8 +111,8 @@ typedef unsigned char         FTS_BOOL;    //8 bit
 #define FT5x06_IRQ_NAME        "ft5x06_irq"
 #endif
 
-#define ft5x06_debug
-#define ft5x06_warnning
+#define ft5x06_debug 2
+#define ft5x06_warnning 3
 
 extern int debug_switch;
 
