@@ -980,23 +980,23 @@ static void atc260x_check_bat_online(struct atc260x_charger *charger)
 {
 	int ret;
 	
-//	if (first_power_on)
-//	{
+	if (first_power_on)
+	{
 		/*check if battery is online*/
 		batv_before_check = get_batv_avr(charger);
 		ret = charger->check_bat_online(charger->atc260x);
 		if (ret <= 0) 
 		{
-	//		pr_warn("\n[power] No battery detected\n");
+			pr_warn("\n[power] No battery detected\n");//add by bill
 			charger->bat_is_exist = false;
 		} 
 		else 
 		{
-	//		pr_info("\n[power] Battery detected\n");
+			pr_info("\n[power] Battery detected\n");//add by bill
 			charger->bat_is_exist = true;
 		}
 		batv_after_check = get_batv_avr(charger);
-//	}
+	}
 }
 
 /**
@@ -1165,7 +1165,8 @@ static void turn_off_charger_if_needed(struct atc260x_charger *charger)
 	// ywwang  todo
 	if (charger->extern_power_online && (charger->cur_bat_cap < 100)) 
 	{
-		led_state_charge(charger);
+		if(charger->charge_on) //add by bill
+			led_state_charge(charger);
 	} 
 	else 
 	{
@@ -1218,7 +1219,7 @@ static void turn_on_charger_if_needed(struct atc260x_charger *charger)
 
 	WARN_ON(charger_delay_counter > 7);
 	charger_delay_counter++;
-	if (!charger->charge_on && charger_delay_counter == 7)
+	if (!charger->charge_on && charger_delay_counter == 2) //add by bill
 	{
 		atc260x_charger_turn_on();
 		if(charger->charge_on)
@@ -1247,10 +1248,12 @@ static unsigned int  atc260x_get_future_current(struct atc260x_charger *charger,
 		if (charger->cur_bl_status == BL_ON) 
 		{
 			set_current = charger->cfg_items.bl_on_current_wall_adp;	
+                        printk("BL_ON---------------------add by bill");
 		} 
 		else 
 		{
 			set_current = charger->cfg_items.bl_off_current_wall_adp;
+                        printk("BL_OFF---------------------add by bill");
 		}
 		break;
 
@@ -1994,7 +1997,7 @@ int atc260x_set_charger_current(int new, int *old)
 	*old = get_chg_current_now();
 	current_binary = atc260x_real_current_to_binary(charger,new / 100);	
 	charger->set_constant_current(charger, current_binary);
-//	pr_info("[%s]the current set to be:%d(%d)\n",__func__,current_binary,new); //remove by bill
+	pr_info("[%s]the current set to be:%d(%d)\n",__func__,current_binary,new);//remove 
 
 	return 0;
 }
@@ -2535,7 +2538,7 @@ static int atc260x_get_cfg_item(struct atc260x_charger *charger)
 		else
 		{
 			charger->cfg_items.charger_led_exist = true;
-			gpio_direction_output(charger->cfg_items.gpio_led_inner_pin, !charger->cfg_items.gpio_led_active_low);
+			gpio_direction_output(charger->cfg_items.gpio_led_inner_pin, charger->cfg_items.gpio_led_active_low);
 
 		}
 	}

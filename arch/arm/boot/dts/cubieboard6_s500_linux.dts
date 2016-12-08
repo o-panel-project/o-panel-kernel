@@ -558,7 +558,7 @@
 				bl_off_usb_pc_max_charge_current = < 500 >;       /*mA,plug usb-pc,backlight is off*/
 				bl_on_usb_adp_max_charge_current = <400>;         /*mA,plug usb-adapter,backlight is on */
 				bl_off_usb_adp_max_charge_current = <800>;        /*mA,plug usb-adapter,backlight is off */
-				bl_on_wall_adp_max_charge_current = <400>;        /*mA,plug DCIN adapter,backlight is on*/
+				bl_on_wall_adp_max_charge_current = <1400>;        /*mA,plug DCIN adapter,backlight is on*/
 				bl_off_wall_adp_max_charge_current = < 1400 >;    /*mA,plug DCIN adapter,backlight is off*/
 				bl_on_voltage_diff  = <350>;                      /*mV,different voltage between SYSPOWR and battery,backlight is on*/
 				bl_off_voltage_diff = <400>;                      /*mV,different voltage between SYSPOWR and battery,backlight is off*/
@@ -568,7 +568,8 @@
 				pwms = <&pwm 3 2666 1>;                           /* 3--pwm3   2666ns--1/(24M/64)*1000000000-1   1- -active low*/
 				pwm-names = "ext_dcdc_pwm_ctl";                   /* pwm name */
 				ext_charger_exist = <0>;                          /* 1:exist external charger  0:do not exist external charger*/
-				charger_led_exist = <0>;                          /* 1:exist charger led 0:do not exist charger led */
+				charger_led_exist = <1>;                          /* 1:exist charger led 0:do not exist charger led */
+                                inner_charger_led_ctl = <&atc260x_sgpio 4 0>;     /* SGPIO4   0: high, 1: low*/
 			};
 
 			atc260x-cap-gauge{
@@ -579,10 +580,10 @@
 				taper_voltage = < 4200 >;                         /*mV,the one close to the full capacity*/
 				taper_current = <300>; 
 				min_over_chg_protect_voltage = < 4275 >;				/*mA,the one close to the full capacity*/
-				terminal_voltage = <3450>;                        /*mV,the lowest voltage of battery permitted*/
+				terminal_voltage = <3550>;                        /*mV,the lowest voltage of battery permitted*/
 				suspend_current = < 7730 >;                       /* uA,the current of suspend*/
 				shutdown_current = < 50 >;                        /* uA,the current of shutdown*/
-				print_switch = <0>;                               /*0:open the switch of printing information 1:the opposite*/
+				print_switch = <1>;                               /*0:open the switch of printing information 1:the opposite*/
 				log_switch = <0>;                                 /*0:open the switch of recording charging log 1:the opposite*/
 				
 				ocv_soc_00 = <3477 3534 3591 3624 3637 3649 3661 3667 3673 3677>;    	 /* capacity:from 1% to 10%*/
@@ -707,8 +708,8 @@
 				regulator-name = "ldo7";
 				regulator-min-microvolt  = <1800000>;
 				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-				regulator-suspend-off;
+				//regulator-always-on;
+				//regulator-suspend-off;
 			};
 
 			ldo8: ldo8{
@@ -791,7 +792,7 @@
 	i2c@b0178000 {
 		i2c_num = <2>;
 		clock-frequency = <400000>;
-		status = "disabled";
+		status = "okay";
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c2_state_default>;
 
@@ -942,7 +943,7 @@
 		card_type = "wifi";  /* only: "memory", "wifi", or "emmc" */
 
 		status = "okay";
-	//	status = "disabled";
+//		status = "disabled";
 	};
 
 	mmc@b0238000 {
@@ -971,11 +972,11 @@
 	};
   usb@b0600000 { 
      //vbus_otg_en_gpio = <&gpio 116 1>; /*GPIO D20*/ 
-     port0_host_plug_detect = <2>;
+     port0_host_plug_detect = <3>;      /*0:disable 1:enable detect and vbus contrl 2:only detect 3:enalbe detect and usb1&usb2 use the same gpio*/
    }; 
    usb@b0700000 { 
-     port1_host_plug_detect = <2>;
      //vbus_otg_en_gpio =<&gpio 116 1>; /*GPIO D20*/ 
+     port1_host_plug_detect = <3>;    /*0:disable 1:enable detect and vbus contrl 2:only detect 3:enalbe detect and usb1&usb2 use the same gpio*/
    };
 
 	monitor {
@@ -1041,8 +1042,7 @@
 			sp2519 = <1>;	
 			soc5140 = <1>;
     	};
-    };
-
+    };	
 	
 	lcd0: lcd0@b02a0000 {
 		status = "disabled";
@@ -1151,22 +1151,21 @@
 		delay_bf_pwm  = <200>;
 		delay_af_pwm  = <10>;	
 	};
-	
-        leds {
-                compatible = "gpio-leds";
-                led@1 {
-                        label = "blue:GPIOB9";
-                        gpios = <&gpio 41 0>;  /*Active High*/
-                        linux,default-trigger = "";
-                        default-state = "ON";
-                };
-                led@2 {
-                        label = "green:GPIOB8";
-                        gpios = <&gpio 40 0>;  /*Active High*/
-                        linux,default-trigger = "default-on";
-                        default-state = "ON";
-                };      
-        };
+          leds {
+                 compatible = "gpio-leds";
+                 led@1 {
+                         label = "blue:GPIOB9";
+                         gpios = <&gpio 41 0>;  /*Active High*/
+                         linux,default-trigger = "";
+                         default-state = "ON";
+                 };
+                 led@2 {
+                         label = "green:GPIOB8";
+                         gpios = <&gpio 40 0>;  /*Active High*/
+                         linux,default-trigger = "default-on";
+                         default-state = "ON";
+                 };
+         };
 	vibrator {
 		compatible = "actions,vibrator";
 		status = "disabled";
