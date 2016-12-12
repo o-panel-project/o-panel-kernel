@@ -210,7 +210,7 @@
 		return ret;
 	if (exist) {
 		int bat_v = atc2603c_read_adc(atc260x, "BATV");
-		printk("%s bat_v:%d\n",__func__, bat_v);
+//		printk("%s bat_v:%d\n",__func__, bat_v);
 		return 1;
 	}
 	return 0;
@@ -363,8 +363,11 @@ void atc2603c_set_constant_current(struct atc260x_charger *charger, int set_curr
 
 static void set_vbus_control_mode(struct atc260x_charger *charger, int vbus_control_mode)
 {
+	vbus_control_mode = VOLTAGE_LIMITED;//add by Reachy-0
+	printk("vbus_control_mode = VOLTAGE_LIMITED add by Reachy-1");
 	if (vbus_control_mode == VOLTAGE_LIMITED)
 	{
+	printk("vbus_control_mode == CURRENT_LIMITED add by Reachy-3");
 		atc260x_reg_write(charger->atc260x, ATC2603C_PMU_APDS_CTL, 
 						(atc260x_reg_read(charger->atc260x, ATC2603C_PMU_APDS_CTL) &
 						(~VBUS_CONTROL_SEL_MASK )) |
@@ -380,7 +383,7 @@ static void set_vbus_control_mode(struct atc260x_charger *charger, int vbus_cont
 						(~VBUS_CUR_LIMITED_MASK ) &
 						(~VBUS_CONTROL_SEL_MASK)) |
 						VBUS_CONTROL_EN |
-						VBUS_CUR_LIMITED_500MA |
+						VBUS_CUR_LIMITED_1000MA |
 						VBUS_CONTROL_SEL_CUR);
 		power_dbg("vubs control mode:***CURRENT_LIMITED***, ATC2603C_PMU_APDS_CTL:%x\n",
 			atc260x_reg_read(charger->atc260x, ATC2603C_PMU_APDS_CTL));
