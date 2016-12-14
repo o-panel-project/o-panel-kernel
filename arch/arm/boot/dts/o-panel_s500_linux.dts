@@ -536,7 +536,7 @@
                                 pinctrl-names = "default";
                                 pinctrl-0 = <&i2s0_state_default>;				
 				//earphone_detect_gpios = <&gpio 21 0>; /*0: high, 1: low hr280ac GPIOA21 0*/
-				speaker_en_gpios = <&gpio 114 0>; /*hr280ac GPIOD(30) 0: high, 1: low*/
+				speaker_en_gpios = <&gpio 40 0>; /*hr280ac GPIOD(30) 0: high, 1: low*/
 				earphone_output_mode = <0>; /*0: direct mode, 1: undirect mode*/
 				mic_num = <1>; /*just suport 1, 2*/
 				mic0_gain = < 0xf 0xf >; /*<Lchannel,Rchannel> [0x0~0xF]*/
@@ -565,7 +565,7 @@
 				support_adaptor_type = <3>;                       /*1: DCIN  2: USB  3:DCIN+USB*/
 				boot_cap_threshold = <3>;                         /*3%,the lowest capacity permitted to boot*/ 
 				ext_dcdc_exist = <0>;                             /*1:exist external dcdc  0:do not exist external dcdc*/
-				pwms = <&pwm 3 2666 1>;                           /* 3--pwm3   2666ns--1/(24M/64)*1000000000-1   1- -active low*/
+				//pwms = <&pwm 3 2666 1>;                           /* 3--pwm3   2666ns--1/(24M/64)*1000000000-1   1- -active low*/
 				pwm-names = "ext_dcdc_pwm_ctl";                   /* pwm name */
 				ext_charger_exist = <0>;                          /* 1:exist external charger  0:do not exist external charger*/
 				charger_led_exist = <0>;                          /* 1:exist charger led 0:do not exist charger led */
@@ -926,7 +926,7 @@
 
 		card_type = "memory";  /* only: "memory", "wifi", or "emmc" */
 		card_detect_mode = "gpio";  /* only: "sirq", "gpio", or "command" */
-		card_detect_gpios = <&gpio 120 0>; /*86v S500 GPIOD24 */  
+		card_detect_gpios = <&gpio 121 0>; /*86v S500 GPIOD24 */  
 		interrupts = < 0 42 0x4 >;
 
 		status = "okay";
@@ -1143,11 +1143,11 @@
 		/*1.pwm num; 2. period in ns; */
 		/*3.plarity, 0: high active, 1: low active*/
 		backlight_en_gpios = <&gpio 22 0>; /*S500 GPIO*/ 
-		pwms = <&pwm 0 50000 1>;
+		pwms = <&pwm 0 50000 0>;
 		total_steps = <1024>;
-		min_brightness = <120>;
-		max_brightness = <450>;
-		dft_brightness = <300>;
+		min_brightness = <124>;
+		max_brightness = <1024>;
+		dft_brightness = <524>;
 		delay_bf_pwm  = <200>;
 		delay_af_pwm  = <10>;	
 	};
@@ -1181,7 +1181,7 @@
 	wifi_bt_power_ctl {
 		compatible = "wifi,bt,power,ctl";
 		//bt_power_gpio = <&gpio 16 0>;/*GPIOA20, high active*/   /*BT_WAKE*/
-		wifi_bt_power_gpios = <&gpio 126 0>; /* GPIOD30 */
+		wifi_bt_power_gpios = <&gpio 120 0>; /* GPIOD30 */
 		bt_en_gpios = <&gpio 115 0>; /*GPIOB2, high active*/ 
 		wifi_en_gpios = <&gpio 21 0>; /* GPIOB0 */
 	};
