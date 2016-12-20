@@ -1079,7 +1079,7 @@
 
 		};
 		
-		dsi_mode:mode@1368x768p60 {
+		dsi_mode:mode@768x1368p60 {
 			refresh = <60>;
 			xres = <1368>;    // cannot set to 1366, it must a nultiple of 8,
 			yres = <768>;

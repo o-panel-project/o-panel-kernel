@@ -1176,7 +1176,7 @@ static int ft5x06_read_points( struct ft5x06_device *ftdev,
                                         data->rawData[i+ FT5X06_X_OFFSET + 1]);
             y = VALUE_XY( data->rawData[i + FT5X06_Y_OFFSET], 
                                         data->rawData[i + FT5X06_Y_OFFSET + 1]);
-    //printk("raw:x:%d, y:%d\n", x, y);
+   // printk("raw:x:%d, y:%d\n", x, y);
 #if CFG_FT_USE_CONFIG
             if ( x <= cfg_dts.xMax && y <= cfg_dts.yMax ) {
                 if (cfg_dts.XYSwap == 1)
@@ -1214,7 +1214,7 @@ static int ft5x06_read_points( struct ft5x06_device *ftdev,
 
             }
 #endif
-            //printk("end:x:%d, y:%d\n", x, y);
+            printk("end:x:%d, y:%d\n", x, y);
 
             data->points[pcnt].x = x;
             data->points[pcnt].y = y; 
@@ -1282,7 +1282,7 @@ static int ft5x06_report_event(struct ft5x06_device *ftdev, struct ft5x06_point*
                 FT5X06_DEBUG("Invalid event");
                 return 0;
         }
-//        printk("(x,y):(%u, %u)\n", pos->x, pos->y);
+        printk("(x,y):(%u, %u)\n", pos->x, pos->y);
         input_report_abs( input, ABS_MT_POSITION_X, pos->x);
         input_report_abs( input, ABS_MT_POSITION_Y, pos->y);
         input_report_abs( input, ABS_MT_TRACKING_ID, pos->id);
