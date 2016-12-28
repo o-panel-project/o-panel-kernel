@@ -1152,27 +1152,27 @@
 		delay_af_pwm  = <10>;	
 	};
 	
-        leds {
-                compatible = "gpio-leds";
-                led@1 {
-                        label = "CHG_LED_SIGNAL";
-                        gpios = <&gpio 20 0>;  /*gpioa20 Active Low*/
-                        linux,default-trigger = "none";
-                        default-state = "ON";
-                };
-                led@2 {
-                        label = "RED_SIGNAL";
-                        gpios = <&gpio 19 0>;  /*gpioa19 Active Low*/
-                        linux,default-trigger = "none";
-                        default-state = "ON";
-                };      
-                led@3 {
-                        label = "GRN_SIGNAL";
-                        gpios = <&gpio 17 1>;  /*gpioa17 Active Low*/
-                        linux,default-trigger = "none";
-                        default-state = "ON";
-                };      
-        };
+//        leds {
+//                compatible = "gpio-leds";
+//                led@1 {
+//                        label = "CHG_LED_SIGNAL";
+//                        gpios = <&gpio 20 0>;  /*gpioa20 Active Low*/
+//                        linux,default-trigger = "none";
+//                        default-state = "ON";
+//                };
+//                led@2 {
+//                        label = "RED_SIGNAL";
+//                        gpios = <&gpio 19 0>;  /*gpioa19 Active Low*/
+//                        linux,default-trigger = "none";
+//                        default-state = "ON";
+//                };      
+//                led@3 {
+//                        label = "GRN_SIGNAL";
+//                        gpios = <&gpio 17 1>;  /*gpioa17 Active Low*/
+//                        linux,default-trigger = "none";
+//                        default-state = "ON";
+//                };      
+//        };
 	vibrator {
 		compatible = "actions,vibrator";
 		status = "disabled";
