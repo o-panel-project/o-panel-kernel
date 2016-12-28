@@ -1,0 +1,46 @@
+#ifndef __WPCIO_PIN_H__
+#define __WPCIO_PIN_H__
+
+#include <mach/gpio.h>
+
+#define GPIO_PIN_DIPSW1				124
+#define GPIO_PIN_DIPSW2				125
+#define GPIO_PIN_DIPSW3				126
+#define	GPIO_PIN_DIPSW4				127
+
+#define GPIO_PIN_LED_GREEN			17
+#define GPIO_PIN_LED_RED			19
+#define GPIO_PIN_LED_ORANGE		        20
+
+#define GPIO_PIN_USB_HUB_RESET		163
+
+#define GPIO_PIN_USB1_OE_N			14
+#define GPIO_PIN_USB2_OE_N			15
+#define GPIO_PIN_USB3_OE_N			16
+#define GPIO_PIN_USB4_OE_N			174
+
+#define GPIO_PIN_USB2_POWER			88
+#define GPIO_PIN_USB3_POWER			22
+#define GPIO_PIN_USB4_POWER			21
+#define GPIO_PIN_TP_POWER			151
+
+#define GPIO_PIN_MMC1_ON_N			143
+
+#define GPIO_PIN_USB2_OVERCUR_N		172
+#define GPIO_PIN_USB4_OVERCUR_N		171
+
+#define GPIO_PIN_BAT1_FAULT_N		16
+#define GPIO_PIN_BAT1_FASTCHG_N		15
+#define GPIO_PIN_BAT1_FULLCHG_N		14
+
+#define GPIO_PIN_BAT2_FAULT_N		149
+#define GPIO_PIN_BAT2_FASTCHG_N		(OMAP_MAX_GPIO_LINES + 2)
+#define GPIO_PIN_BAT2_FULLCHG_N		(OMAP_MAX_GPIO_LINES + 15)
+
+#define GPIO_PIN_WIFI_PD_N			142
+#define GPIO_PIN_WIFI_RESET_N		140
+#define GPIO_PIN_MMC1_CD_N			170
+
+#define GPIO_PIN_ADCIN2_SEL			(OMAP_MAX_GPIO_LINES + 13)
+
+#endif
