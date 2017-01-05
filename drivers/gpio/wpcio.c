@@ -175,6 +175,8 @@ static void start_madc(struct _wpcio_data *wpcio_data) {
 			val = 0x01;
 			break;
 	}
+	//Enable GPIOB1(SYSEN), for ADC
+	gpio_set_value_cansleep(GPIO_PIN_ADCIN2_SEL, 1);  
 	/*
 	twl_i2c_write_u8(TWL4030_MODULE_MADC, val, TWL4030_MADC_SW1SELECT_LSB);
 	twl_i2c_write_u8(TWL4030_MODULE_MADC, 0x00, TWL4030_MADC_SW1SELECT_MSB);
@@ -195,7 +197,7 @@ static void conversion_work_handler(void* context) {
 	// check conversion end
 	/*
 	twl_i2c_read_u8(TWL4030_MODULE_MADC, &value,  TWL4030_MADC_CTRL_SW1);
-	if (value & TWL4030_MADC_CTRL_SW1_EOC_SW1) {
+	if (value ) {
 		// get the adc value
 		switch(wpcio_data->channel) {
 			case 1:
@@ -292,22 +294,25 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return 0;
 
 		case WPC_RESET_USB_HUB:
+			// no usb hub 
 			spin_lock(&wpcio_data.acc_lock);
-			gpio_set_value_cansleep(GPIO_PIN_USB_HUB_RESET, 1);
+			//gpio_set_value_cansleep(GPIO_PIN_USB_HUB_RESET, 1);
 			mdelay(100);
-			gpio_set_value_cansleep(GPIO_PIN_USB_HUB_RESET, 0);
+			//gpio_set_value_cansleep(GPIO_PIN_USB_HUB_RESET, 0);
 			spin_unlock(&wpcio_data.acc_lock);
 			return 0;
 
 		case WPC_SET_USB1_ATTACH:
 			data = arg;
-			gpio_set_value_cansleep(GPIO_PIN_USB1_OE_N, data? 0:1);
+			// in o-panel ,don't need to power the cradle by gpio control 
+			//gpio_set_value_cansleep(GPIO_PIN_USB1_OE_N, data? 0:1); 
 			return 0;
 
 		case WPC_SET_USB2_ONOFF:
+			//in schematic,network name is USB0_ON, for microUSB-AB
 			spin_lock(&wpcio_data.acc_lock);
 			if (arg) {
-				gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 0);
+				//gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 0);
 				gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 1);
 				mdelay(200);
 				wpcio_data.usb2_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB2_OVERCUR_N)? 0:1;
@@ -315,7 +320,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				else {
 					printk(MY_NAME": USB2 overcurrent, switched off\n");
 					// turn off usb2
-					gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 1);
+					//gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 1);
 					gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 0);
 					wpcio_data.usb2_on = 0;
 					spin_lock(&wpcio_data.acc_lock);
@@ -324,7 +329,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			}
 			else {
 				// turn off usb2
-				gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 1);
+				//gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 1);
 				gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 0);
 				wpcio_data.usb2_on = 0;
 			}
@@ -332,14 +337,15 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return 0;
 
 		case WPC_SET_USB3_ONOFF:
+			//in schematic,network name is USB2_ON, for USB FeliCa
 			spin_lock(&wpcio_data.acc_lock);
 			if (arg) {
-				gpio_set_value_cansleep(GPIO_PIN_USB3_OE_N, 0);
+			//	gpio_set_value_cansleep(GPIO_PIN_USB3_OE_N, 0);
 				gpio_set_value_cansleep(GPIO_PIN_USB3_POWER, 1);
 			}
 			else {
 				// turn off usb2
-				gpio_set_value_cansleep(GPIO_PIN_USB3_OE_N, 1);
+			//	gpio_set_value_cansleep(GPIO_PIN_USB3_OE_N, 1);
 				gpio_set_value_cansleep(GPIO_PIN_USB3_POWER, 0);
 			}
 			spin_unlock(&wpcio_data.acc_lock);
@@ -348,16 +354,16 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_SET_USB4_ONOFF:
 			spin_lock(&wpcio_data.acc_lock);
 			if (arg) {
-				gpio_set_value_cansleep(GPIO_PIN_USB4_OE_N, 0);
-				gpio_set_value_cansleep(GPIO_PIN_USB4_POWER, 1);
+				//gpio_set_value_cansleep(GPIO_PIN_USB4_OE_N, 0);
+				//gpio_set_value_cansleep(GPIO_PIN_USB4_POWER, 1);
 				mdelay(100);
-				wpcio_data.usb4_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB4_OVERCUR_N)? 0:1;
+				//wpcio_data.usb4_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB4_OVERCUR_N)? 0:1;
 				if (!wpcio_data.usb2_overcurrent) wpcio_data.usb4_on = 1;
 				else {
 					printk(MY_NAME": USB2 overcurrent, switched off\n");
 					// turn off usb2
-					gpio_set_value_cansleep(GPIO_PIN_USB4_OE_N, 1);
-					gpio_set_value_cansleep(GPIO_PIN_USB4_POWER, 0);
+					//gpio_set_value_cansleep(GPIO_PIN_USB4_OE_N, 1);
+					//gpio_set_value_cansleep(GPIO_PIN_USB4_POWER, 0);
 					wpcio_data.usb4_on = 0;
 					spin_lock(&wpcio_data.acc_lock);
 					return -EFAULT;
@@ -365,8 +371,8 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			}
 			else {
 				// turn off usb2
-				gpio_set_value_cansleep(GPIO_PIN_USB4_OE_N, 1);
-				gpio_set_value_cansleep(GPIO_PIN_USB4_POWER, 0);
+				//gpio_set_value_cansleep(GPIO_PIN_USB4_OE_N, 1);
+				//gpio_set_value_cansleep(GPIO_PIN_USB4_POWER, 0);
 				wpcio_data.usb4_on = 0;
 			}
 			spin_unlock(&wpcio_data.acc_lock);
@@ -383,7 +389,8 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_GET_USB4_OVERCUR:
 			if (!arg) return -EFAULT;
 			if (wpcio_data.usb4_on)
-				wpcio_data.usb2_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB4_OVERCUR_N)? 0:1;
+				;
+				//wpcio_data.usb2_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB4_OVERCUR_N)? 0:1;
 			else wpcio_data.usb4_overcurrent = -1;
 			return copy_to_user((void __user *)arg, &wpcio_data.usb4_overcurrent,
 					sizeof(wpcio_data.usb4_overcurrent))? -EFAULT : 0;
@@ -612,9 +619,9 @@ static struct _pin_table {
 //	{ GPIO_PIN_USB3_OE_N,		"USB3_OEN",		1, 1, 0 },
 //	{ GPIO_PIN_USB4_OE_N,		"USB4_OEN",		1, 1, 0 },
 //	{ GPIO_PIN_USB2_POWER,		"USB2_PWR", 	1, 0, 0 },
-//	{ GPIO_PIN_USB3_POWER,		"USB3_PWR", 	1, 0, 0 },
+	{ GPIO_PIN_USB3_POWER,		"USB3_PWR", 	1, 0, 0 },
 //	{ GPIO_PIN_USB4_POWER,		"USB4_PWR", 	1, 0, 0 },
-//	{ GPIO_PIN_USB2_OVERCUR_N,	"USB2_OCN",		0, 0, 0 },
+	{ GPIO_PIN_USB2_OVERCUR_N,	"USB2_OCN",		0, 0, 0 },
 //	{ GPIO_PIN_USB4_OVERCUR_N,	"USB4_OCN",		0, 0, 0 },
 	{ GPIO_PIN_BAT1_FAULT_N,	"BAT1_FAULTN",	0, 0, 0 },
 	{ GPIO_PIN_BAT1_FASTCHG_N,	"BAT1_FASTCN",	0, 0, 0 },
@@ -624,7 +631,7 @@ static struct _pin_table {
 //	{ GPIO_PIN_BAT2_FULLCHG_N,	"BAT2_FULLCN",	0, 0, 0 },
 	//{ GPIO_PIN_WIFI_PD_N,		"WIFI_PDN",		1, 0, 0 },	// Leave mmc3 to request it.
 	//{ GPIO_PIN_WIFI_RESET_N,	"WIFI_RESETN",	1, 0, 0 },
-	//{ GPIO_PIN_ADCIN2_SEL,		"ADCIN2_SEL",   1, 0, 0 },
+	{ GPIO_PIN_ADCIN2_SEL,		"ADCIN2_SEL",   1, 0, 0 },
 //	#if defined(GPIO_PIN_MMC1_ON_N)
 //		{ GPIO_PIN_MMC1_ON_N, 	"MMC1_ONN",		1, 0, 0 },
 //	#endif
@@ -651,11 +658,13 @@ static int __init wpc_io_init(void) {
 			pin_table[i].requested = 1;
 			if (pin_table[i].output) gpio_direction_output(pin_table[i].gpio, pin_table[i].level);
 			else gpio_direction_input(pin_table[i].gpio);
+			/* no GPIO_PIN_USB_HUB_RESET
 			if (pin_table[i].gpio == GPIO_PIN_USB_HUB_RESET) {
 				// pulse the usb hub reset
 				mdelay(100);
 				gpio_set_value_cansleep(GPIO_PIN_USB_HUB_RESET, 0);
 			}
+			*/
 		}
 		else {
 			printk(MY_NAME": Unable to request gpio %d, name = %s\n",
