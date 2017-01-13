@@ -36,14 +36,16 @@
 
 #include "wpcio_pin.h"
 #include "wpcio.h"
-#include "twl4030-madc.h"
+//#include "twl4030-madc.h"
+#include <linux/time.h>
+#include <linux/mfd/atc260x/atc260x.h>
 
 #define MY_NAME "WPC_IO"
 #define IO_INFO(fmt, arg...) printk(KERN_INFO MY_NAME ": " fmt "\n" , ## arg)
 #define IO_DBG(fmt, arg...)  printk(KERN_DEBUG MY_NAME " %s: " fmt "\n" , __FUNCTION__ , ## arg)
 #define IO_ERR(fmt, arg...)  printk(KERN_ERR  MY_NAME " %s: " fmt "\n" , __FUNCTION__ , ## arg)
 
-#define IO_DRV_VERSION			"2.0.0 for 2.6.37"
+#define IO_DRV_VERSION			"2.0.0 for 3.10.37"
 #define MAX_OPEN_COUNT			2
 
 #define MADC_SAMPLE_RATE_MS		50
@@ -143,9 +145,9 @@ static struct _user_gpio * get_gpio(int gpio) {
 // Colman end, 110412
 
 static void enable_madc(void) {
+	/*
 	u8 value;
 	// Enable madc use HFCLK
-	/*
 	twl_i2c_read_u8(TWL4030_MODULE_INTBR, &value, TWL4030_INTBR_GPBR1);
 	value |= TWL4030_INTBR_GPBR1_MADC_HFCLK_EN;
 	twl_i2c_write_u8(TWL4030_MODULE_INTBR, value, TWL4030_INTBR_GPBR1);
@@ -184,16 +186,29 @@ static void start_madc(struct _wpcio_data *wpcio_data) {
 	twl_i2c_write_u8(TWL4030_MODULE_MADC, 0x00, TWL4030_MADC_SW1AVERAGE_MSB);
 	// start the conversion
 	twl_i2c_write_u8(TWL4030_MODULE_MADC, TWL_MADC_CTRL_SW1_SW1, TWL4030_MADC_CTRL_SW1);
+	*/
 	// set a timer to get the value
 	mod_timer(&wpcio_data->timer, jiffies + msecs_to_jiffies(MADC_SAMPLE_RATE_MS));
-	*/
 }
 
 // Work handler wpen request
 static void conversion_work_handler(void* context) {
 	struct _wpcio_data *wpcio_data = container_of(context, struct _wpcio_data, conversion_work);
-	u8 value;
+	u8 ret;
 	u32 d;
+	ret=atc260x_ex_auxadc_read_by_name("AUX0",&d);
+	if(ret < 0)
+		printk("cannot get the AUX0 correct translation data!\n");
+	//printk("AUX0 value=%d\n",d);
+	wpcio_data->dc_level = d;
+
+	ret=atc260x_ex_auxadc_read_by_name("AUX2",&d);
+	if(ret < 0)
+		printk("cannot get the AUX2 correct translation data!\n");
+	//printk("AUX2 value=%d\n",d);
+	wpcio_data->bat1_level = d;
+
+	start_madc(wpcio_data);
 	// check conversion end
 	/*
 	twl_i2c_read_u8(TWL4030_MODULE_MADC, &value,  TWL4030_MADC_CTRL_SW1);
@@ -689,7 +704,7 @@ static int __init wpc_io_init(void) {
 
 	enable_madc();
 
-	wpcio_data.workqueue = create_workqueue("wpcio_workqueue");
+	wpcio_data.workqueue = create_singlethread_workqueue("wpcio_workqueue");
 	INIT_WORK(&wpcio_data.conversion_work, (work_func_t)conversion_work_handler);
 	init_timer(&wpcio_data.timer);
 	wpcio_data.timer.data = (unsigned long)&wpcio_data;
