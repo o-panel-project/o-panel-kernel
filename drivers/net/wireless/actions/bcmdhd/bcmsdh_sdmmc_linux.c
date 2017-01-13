@@ -91,7 +91,9 @@ static int clockoverride = 0;
 module_param(clockoverride, int, 0644);
 MODULE_PARM_DESC(clockoverride, "SDIO card clock override");
 
+#ifdef GLOBAL_SDMMC_INSTANCE
 PBCMSDH_SDMMC_INSTANCE gInstance;
+#endif
 
 /* Maximum number of bcmsdh_sdmmc devices supported by driver */
 #define BCMSDH_SDMMC_MAX_DEVICES 1
@@ -108,9 +110,12 @@ static int sdioh_probe(struct sdio_func *func)
 
 	sd_err(("bus num (host idx)=%d, slot num (rca)=%d\n", host_idx, rca));
 	adapter = dhd_wifi_platform_get_adapter(SDIO_BUS, host_idx, rca);
-	if (adapter  != NULL)
+	if (adapter != NULL) {
 		sd_err(("found adapter info '%s'\n", adapter->name));
-	else
+#ifdef BUS_POWER_RESTORE
+		adapter->sdio_func = func;
+#endif
+	} else
 		sd_err(("can't find adapter info for this chip\n"));
 
 #ifdef WL_CFG80211
@@ -156,6 +161,7 @@ static void sdioh_remove(struct sdio_func *func)
 		sd_err(("%s: error, no sdioh handler found\n", __FUNCTION__));
 		return;
 	}
+	sd_err(("%s: Enter\n", __FUNCTION__));
 
 	osh = sdioh->osh;
 	bcmsdh_remove(sdioh->bcmsdh);
@@ -177,7 +183,9 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	sd_info(("sdio_device: 0x%04x\n", func->device));
 	sd_info(("Function#: 0x%04x\n", func->num));
 
+#ifdef GLOBAL_SDMMC_INSTANCE
 	gInstance->func[func->num] = func;
+#endif
 
 	/* 4318 doesn't have function 2 */
 	if ((func->num == 2) || (func->num == 1 && func->device == 0x4))
@@ -220,7 +228,7 @@ static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 
 MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_ids);
 
-#if 0 //(LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
 static int bcmsdh_sdmmc_suspend(struct device *pdev)
 {
 	int err;
@@ -228,14 +236,14 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	struct sdio_func *func = dev_to_sdio_func(pdev);
 	mmc_pm_flag_t sdio_flags;
 
-	printk("%s Enter\n", __FUNCTION__);
+	printf("%s Enter func->num=%d\n", __FUNCTION__, func->num);
 	if (func->num != 2)
 		return 0;
 
 	sdioh = sdio_get_drvdata(func);
 	err = bcmsdh_suspend(sdioh->bcmsdh);
 	if (err) {
-		printk("%s bcmsdh_suspend err=%d\n", __FUNCTION__, err);
+		printf("%s bcmsdh_suspend err=%d\n", __FUNCTION__, err);
 		return err;
 	}
 
@@ -257,7 +265,7 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	dhd_mmc_suspend = TRUE;
 	smp_mb();
 
-	printk("%s Exit\n", __FUNCTION__);
+	printf("%s Exit\n", __FUNCTION__);
 	return 0;
 }
 
@@ -268,7 +276,7 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 #endif
 	struct sdio_func *func = dev_to_sdio_func(pdev);
 
-	printk("%s Enter\n", __FUNCTION__);
+	printf("%s Enter func->num=%d\n", __FUNCTION__, func->num);
 	if (func->num != 2)
 		return 0;
 
@@ -279,7 +287,7 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 #endif
 
 	smp_mb();
-	printk("%s Exit\n", __FUNCTION__);
+	printf("%s Exit\n", __FUNCTION__);
 	return 0;
 }
 
@@ -334,12 +342,12 @@ static struct sdio_driver bcmsdh_sdmmc_driver = {
 	.remove		= bcmsdh_sdmmc_remove,
 	.name		= "bcmsdh_sdmmc",
 	.id_table	= bcmsdh_sdmmc_ids,
-#if 0 //(LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
 	.drv = {
 	.pm	= &bcmsdh_sdmmc_pm_ops,
 	},
 #endif /* (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM) */
-	};
+};
 
 struct sdos_info {
 	sdioh_info_t *sd;
@@ -385,12 +393,10 @@ MODULE_AUTHOR(AUTHOR);
 */
 int bcmsdh_register_client_driver(void)
 {
+#ifdef GLOBAL_SDMMC_INSTANCE
 	gInstance = kzalloc(sizeof(BCMSDH_SDMMC_INSTANCE), GFP_KERNEL);
 	if (!gInstance)
 		return -ENOMEM;
-	
-#if !defined(OOB_INTR_ONLY)
-	mutex_init(&gInstance->claim_host_mutex); // terence 20140926: fix for claim host issue
 #endif
 
 	return sdio_register_driver(&bcmsdh_sdmmc_driver);
@@ -402,6 +408,8 @@ int bcmsdh_register_client_driver(void)
 void bcmsdh_unregister_client_driver(void)
 {
 	sdio_unregister_driver(&bcmsdh_sdmmc_driver);
+#ifdef GLOBAL_SDMMC_INSTANCE
 	if (gInstance)
 		kfree(gInstance);
+#endif
 }

@@ -7,7 +7,7 @@ config BCMDHD
 config BCMDHD_FW_PATH
 	depends on BCMDHD
 	string "Firmware path"
-	default "/lib/firmware/ap6330/fw_bcm40183b2.bin"
+	default "/lib/firmware/ap6330/fw_bcm40183b2_ag.bin"
 	---help---
 	  Path to the firmware file.
 
@@ -18,13 +18,6 @@ config BCMDHD_NVRAM_PATH
 	---help---
 	  Path to the calibration file.
 
-config BCMDHD_CONFIG_PATH
-	depends on BCMDHD
-	string "Config path"
-	default "/lib/firmware/ap6330/config.txt"
-	---help---
-	  Path to the driver configuration file.
-
 config BCMDHD_WEXT
 	bool "Enable WEXT support"
 	depends on BCMDHD && CFG80211 = n
@@ -33,3 +26,15 @@ config BCMDHD_WEXT
 	help
 	  Enables WEXT support
 
+choice
+	prompt "Enable Chip Interface"
+	depends on BCMDHD
+	---help---
+		Enable Chip Interface.
+config BCMDHD_SDIO
+		bool "SDIO bus interface support"
+		depends on BCMDHD && MMC
+config BCMDHD_PCIE
+		bool "PCIe bus interface support"
+		depends on BCMDHD && PCI
+endchoice
