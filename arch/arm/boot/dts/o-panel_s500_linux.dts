@@ -760,8 +760,8 @@
 			tp_vcc = "ldo5";
 			reset_gpios = <&gpio 32 1>; /*GPIOB(0) 0: high, 1: low*/
 			max_points = <10>;
-			x_pixel = <1368>;
-			y_pixel = <768>;
+			x_pixel = <800>;
+			y_pixel = <1280>;
 			x_revert_en = <0>;
 			y_revert_en = <0>;
 			xy_swap_en = <0>;
@@ -1052,7 +1052,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dsi_state_default>;
 		dsi_power_gpios = <&gpio 23 0>;    /*hr280ac GPIOA23*/
-		dsi_reset_gpios = <&gpio 115 0>;   /*S500 GPIOD19*/	
+		dsi_reset_gpios = <&gpio 117 0>;   /*S500 GPIOD19*/	
 		port_type = "dsi";	 
 		data_width = <0>;
 		videomode-0 = <&dsi_mode>;
@@ -1060,37 +1060,37 @@
 
 		dsi_reg:val{	
 			dsi_ctrl =< 0x1340>;
-			dsi_size = <0x3000000>;
+			dsi_size = <0x5000000>;
 			dsi_color = <0xff0000>;
-			dsi_rgbht0 = <0x150b4>;
+			dsi_rgbht0 = <0xc0c0>;
 			dsi_rgbht1 = <0x3e8>;
-			dsi_rgbvt0 = <0x1f0a319>;
-			dsi_rgbvt1 =<0x15>;
+			dsi_rgbvt0 = <0x1f08520>;
+			dsi_rgbvt1 =<0x11>;
 			dsi_pack_cfg = <0x0>;
-			dsi_pack_header =<0x1008>;
+			dsi_pack_header =<0x960>;
 			dsi_vedio_cfg = <0x30c>;
-			dsi_phy_t0 = <0x125b>;
-			dsi_phy_t1 =<0x1b0b>;
-			dsi_phy_t2 = <0x2f06>;
+			dsi_phy_t0 = <0xa5a>;
+			dsi_phy_t1 =<0x1b12>;
+			dsi_phy_t2 = <0x2f05>;
 			dsi_phy_ctrl = <0xfc94>;
 			dsi_pin_map = <0x688>;
-			cmu_dsipll_clk = <0x12b01>;
+			cmu_dsipll_clk = <0x12301>;
 
 
 		};
 		
-		dsi_mode:mode@768x1368p60 {
+		dsi_mode:mode@1280x800p60 {
 			refresh = <60>;
-			xres = <1368>;    // cannot set to 1366, it must a nultiple of 8,
-			yres = <768>;
+			xres = <800>;    
+			yres = <1280>;
 			/*in pico second, 0.000 000 000 001s*/
-			pixclock = <14430>; // maybe can try 14285
-			left_margin = <40>;
-			right_margin = <28>;
-			upper_margin = <15>;
-			lower_margin = <5>;
-			hsync_len = <20>;
-			vsync_len = <5>;
+			pixclock = <14450>; 
+			left_margin = <48>;
+			right_margin = <16>;
+			upper_margin = <12>;
+			lower_margin = <16>;
+			hsync_len = <16>;
+			vsync_len = <4>;
 			/*0: FB_VMODE_NONINTERLACED, 1:FB_VMODE_INTERLACED*/
 			vmode = <0>;
 		};
@@ -1110,6 +1110,7 @@
 	framebuffer {
 		compatible = "actions,framebuffer";  
 		def_display  = "dsi";
+		bpp = <4>; 
 	};
 	cvbs:cvbs@b02b0000{  
 		default_mode = "PAL";
