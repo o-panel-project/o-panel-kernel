@@ -760,12 +760,12 @@
 			tp_vcc = "ldo5";
 			reset_gpios = <&gpio 32 1>; /*GPIOB(0) 0: high, 1: low*/
 			max_points = <10>;
-			x_pixel = <800>;
-			y_pixel = <1280>;
+			x_pixel = <1280>;
+			y_pixel = <800>;
 			x_revert_en = <0>;
 			y_revert_en = <0>;
 			xy_swap_en = <0>;
-			rotate_degree = <180>;  /* 0 90 180 270 */
+			rotate_degree = <90>;  /* 0 90 180 270 */
     	interrupt-parent = <&sirq>;
     	interrupts =< 0 0x2 >; /*SIRQ0*/
 			vol_range = <3100000 3110000>;
