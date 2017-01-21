@@ -102,7 +102,7 @@ static struct _user_gpio {
 //	{55, "GPIO_55", 1, 0, 1, 0 },   // output low - lcd power sequence
 //	{56, "GPIO_56", 0, 0, 0, 0 },   // Input pull low - Cradle status input
 //	{57, "GPIO_57", 0, 0, 0, 0 },   // input pull low - Bat2 detect input
-	{35, "GPIO_35", 1, 0, 0, 0 },   // output low - soft power off trigger
+	{116, "GPIO_116", 1, 0, 0, 0 },   // output low - soft power off trigger
 	{18, "GPIO_18", 1, 0, 0, 0 },   // output low - bat1 charger on/off
 //	{148, "GPIO_148", 0, 0, 0, 0 }, // input pull low - no specified yet
 };
