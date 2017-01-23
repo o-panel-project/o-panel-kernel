@@ -407,16 +407,15 @@
 //		actions,enable-dma-rx;
 		status = "disabled";
 	};
-
+         /*for BT*/
 	serial@b0124000 {
 		clock-frequency = <48000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&serial2_state_default>;
-//		actions,enable-dma-rx;
+		actions,enable-dma-rx;
 		status = "okay";
 	};
 
-	/*for BT*/
 	serial@b0126000 {
 		clock-frequency = <48000000>;
 		pinctrl-names = "default";
@@ -520,8 +519,8 @@
 				protocol = <1>;
 				wk_code= <24>;
 				period = <140>;
-				ir_code =  <24   20  16  70  22  71  21  64   85 21  85  91   79  78  64  30 15 17  18 76 88 27 23 77 10 29 28 90  13  6   2   28 4>;
-				key_code = <116  115 114 103 108 105 106 158  28 174 172 113  102 139 158 14  2 3   4  5  6   7 8   9 10 11 52 183 184 185 186 175 163>;
+				ir_code = <24 91 82 80 20 16 70 22 71 21 85 4 79 78 64 30 15 17 18 76 88 27 23 77 10 29 28 90 13 6 2 28 4>;
+				key_code = <116 113 52 165 115 114 103 108 105 106 353 232 172 139 158 14 2 3 4 5 6 7 8 9 10 11 83 183 184 185 186 175 163>;
 				compatible = "actions,atc2603c-irkeypad";
 			};
 
@@ -538,7 +537,7 @@
 				//earphone_detect_gpios = <&gpio 21 0>; /*0: high, 1: low hr280ac GPIOA21 0*/
 				speaker_en_gpios = <&gpio 126 0>; /*hr280ac GPIOD(30) 0: high, 1: low*/
 				earphone_output_mode = <1>; /*0: direct mode, 1: undirect mode*/
-				mic_num = <1>; /*just suport 1, 2*/
+				mic_num = <2>; /*just suport 1, 2*/
 				mic0_gain = < 0xf 0xf >; /*<Lchannel,Rchannel> [0x0~0xF]*/
 				speaker_gain = < 0xaa 0xaa >; /*<Lchannel,Rchannel>[0x00~0xbebe]*/
 				earphone_gain = < 0xbe 0xbe >; /*<Lchannel,Rchannel>[0x00~0xbebe]*/
@@ -1162,7 +1161,7 @@
                  led@2 {
                          label = "green:GPIOB8";
                          gpios = <&gpio 40 0>;  /*Active High*/
-                         linux,default-trigger = "default-on";
+                         linux,default-trigger = "heartbeat";
                          default-state = "ON";
                  };
          };
