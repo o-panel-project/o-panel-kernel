@@ -50,7 +50,7 @@ static DEFINE_MUTEX(freq_table_mux);
 static struct cpu0_opp_table cpu0_table[] = {
 	/*khz		uV*/
 
-	{1104000, 1175000},
+//	{1104000, 1175000},
 	{ 900000, 1025000},
 	{ 720000,  975000},
 	{ 504000,  950000},
