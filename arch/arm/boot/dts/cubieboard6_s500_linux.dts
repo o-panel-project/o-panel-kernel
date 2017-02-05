@@ -582,7 +582,7 @@
 				terminal_voltage = <3550>;                        /*mV,the lowest voltage of battery permitted*/
 				suspend_current = < 7730 >;                       /* uA,the current of suspend*/
 				shutdown_current = < 50 >;                        /* uA,the current of shutdown*/
-				print_switch = <1>;                               /*0:open the switch of printing information 1:the opposite*/
+				print_switch = <0>;                               /*1:open the switch of printing information 0:the opposite*/
 				log_switch = <0>;                                 /*0:open the switch of recording charging log 1:the opposite*/
 				
 				ocv_soc_00 = <3477 3534 3591 3624 3637 3649 3661 3667 3673 3677>;    	 /* capacity:from 1% to 10%*/
