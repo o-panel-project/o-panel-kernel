@@ -536,7 +536,7 @@
                                 pinctrl-names = "default";
                                 pinctrl-0 = <&i2s0_state_default>;				
 				//earphone_detect_gpios = <&gpio 21 0>; /*0: high, 1: low hr280ac GPIOA21 0*/
-				speaker_en_gpios = <&gpio 40 0>; /*hr280ac GPIOD(30) 0: high, 1: low*/
+				speaker_en_gpios = <&gpio 40 0>; /* GPIOB8 0: high, 1: low*/
 				earphone_output_mode = <0>; /*0: direct mode, 1: undirect mode*/
 				mic_num = <1>; /*just suport 1, 2*/
 				mic0_gain = < 0xf 0xf >; /*<Lchannel,Rchannel> [0x0~0xF]*/
@@ -1145,10 +1145,10 @@
 		/*3.plarity, 0: high active, 1: low active*/
 		backlight_en_gpios = <&gpio 22 0>; /*S500 GPIO*/ 
 		pwms = <&pwm 0 50000 0>;
-		total_steps = <1024>;
-		min_brightness = <124>;
-		max_brightness = <1024>;
-		dft_brightness = <724>;
+		total_steps = <1000>;
+		min_brightness = <0>;
+		max_brightness = <1000>;
+		dft_brightness = <700>;
 		delay_bf_pwm  = <200>;
 		delay_af_pwm  = <10>;	
 	};
