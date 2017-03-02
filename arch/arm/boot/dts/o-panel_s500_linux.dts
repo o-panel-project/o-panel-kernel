@@ -835,7 +835,7 @@
 
 	i2c@b017c000 {
 		i2c_num = <3>;
-		clock-frequency = <400000>;
+		clock-frequency = <25000>;
 		status = "okay";
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c3_state_over_spi0>;
