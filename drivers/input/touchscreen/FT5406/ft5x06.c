@@ -28,6 +28,9 @@
 #define VALUE_ID(yh)            ( yh >> 4 )
 #define VALUE_TYPE(xh)          ( xh >> 6 )
 #define TOUCH_NUMBER(status)    ( status & 0xf )
+#define VALUE_AREA(misc)        ( misc >> 4 )
+#define VALUE_DIRECTION(misc)   ( (misc & 0x0c) >> 2 )
+#define VALUE_SPEED(misc)       ( misc & 0x03 )
 #define TIME_OF_DISCARD         ( msecs_to_jiffies(2000))  //jiffes
 #define PROTOCOL_B
 enum FT5X06_MODE {
@@ -44,6 +47,13 @@ enum FT_EVENT_TYPE {
     NONE_EVENT,
 };
 
+enum FT_TOUCH_STATE {
+	TOUCH_NOUSE = -1,
+	TOUCH_UP = 0,
+	TOUCH_DOWN,
+	TOUCH_MOVE,
+};
+
 #define printlf() printk("%s   %d\n",__FUNCTION__,__LINE__)
 //#define printlf()
 
@@ -52,50 +62,24 @@ enum FT_EVENT_TYPE {
 //#endif
 
 
-#ifdef HAS_VIRTUAL_KEY
-static enum KEY_ID {
-    KEY_ID_HOME,
-    KEY_ID_MENU,
-    KEY_ID_BACK,
-    KEY_ID_MAX,
-};
-
-struct ft5x06_keys {
-    unsigned int keymap;
-    unsigned int oldmap;
-};
-
-struct key_codes {
-    int id;
-    char name[10];
-    int key_code;
-};
-
-struct key_codes key_map[] = {
-    { KEY_ID_HOME, "Home", KEY_HOME},
-    { KEY_ID_MENU, "Menu", KEY_MENU},
-    { KEY_ID_BACK, "Back", KEY_BACK},
-};
-#endif
-
 struct ft5x06_point {
     enum FT_EVENT_TYPE  type;
     unsigned int weight;
     unsigned int x;
     unsigned int y;
     unsigned int id;
+	enum FT_TOUCH_STATE state;
+	unsigned int area;
+	unsigned int direction;
+	unsigned int speed;
 };
 
 struct ft5x06_data {
     struct ft5x06_point points[FT5X06_MAX_POINT];
     u8 rawData[POINT_DATA_LEN*FT5X06_MAX_POINT + 1];
-#ifdef HAS_VIRTUAL_KEY
-    struct ft5x06_keys   keys;
-	int validKeyCnt;
-	int lastValidKeyCnt;
-#endif    
     int validPointCnt;
 	int lastValidCnt;
+    struct ft5x06_point touches[FT5X06_MAX_POINT];
 };
 
 #if CFG_FT_USE_CONFIG
@@ -126,9 +110,6 @@ struct ft5x06_config {
 
 struct ft5x06_device {
     struct input_dev *input_dev;
-#ifdef HAS_VIRTUAL_KEY
-    struct input_dev *key_input;
-#endif
     struct i2c_client *client;
     struct atc260x_dev *atc260x;
     struct ft5x06_data *ftdata;
@@ -151,10 +132,6 @@ static int ft5x06_reset( struct ft5x06_device *);
 static inline void regulator_deinit(struct regulator *);
 static struct regulator *regulator_init(const char *, int, int);
 static inline void disable_power(struct regulator *);
-#ifndef PROTOCOL_B
-static int ft5x06_report_release(struct ft5x06_device *);
-static void ft5x06_release_post(struct ft5x06_device *);
-#endif
 //volatile int enirq = 1;
 volatile int current_val = 0;
 //struct regulator *gpower = NULL;
@@ -933,121 +910,16 @@ out:
     return (( count > 0 && count <= FT5X06_MAX_POINT )?count:0);
 }
 
-#ifdef HAS_VIRTUAL_KEY
-static inline int position2key(unsigned int x, 
-    unsigned int y)
-{
-    int key_id = -1;
-#if defined (LOCAL_GL5202_EVB)
-    if ( x > 800 ) {
-            if ( y==79 ) {
-                    key_id = KEY_ID_BACK;
-					FT5X06_DEBUG("KEY_ID_HOME");
-            } else if ( y==47 ) {
-                    key_id = KEY_ID_HOME;
-					FT5X06_DEBUG("KEY_ID_MENU");
-            } else if ( y==0 ) {
-                    key_id = KEY_ID_MENU; 
-					FT5X06_DEBUG("KEY_ID_BACK");
-            } 
-    }
-#else
-    if ( x > 1024 ) {
-            if ( y < 540 && y > 420 ) {
-                    key_id = KEY_ID_HOME;
-					FT5X06_DEBUG("KEY_ID_HOME");
-            } else if ( y < 360 && y > 240 ) {
-                    key_id = KEY_ID_MENU;
-					FT5X06_DEBUG("KEY_ID_MENU");
-            } else if ( y < 170 && y > 50 ) {
-                    key_id = KEY_ID_BACK; 
-					FT5X06_DEBUG("KEY_ID_BACK");
-            } 
-    }
-#endif
-    return key_id;
-}
-
-static inline int id2code(int id)
-{
-    int i;
-    for( i = 0; i < KEY_ID_MAX; i++) {
-        if ( key_map[i].id == id )
-            return key_map[i].key_code;
-    }
-
-    return -EEXIST;
-}
-
-static int report_keys_event( struct input_dev *input, unsigned long map, int type)
-{
-    int i, cnt = 0;
-
-    if ( map ) {
-        for ( i = 0; i < KEY_ID_MAX; i++ ) {
-            if ( (map >> i) & 0x1 ) {
-                FT5X06_DEBUG("Key: %d\n", id2code(i));
-                input_report_key(input, id2code(i), type);
-                cnt++;
-            }
-        }
-    }
-
-    return !cnt;
-}
-
-static void ft5x06_report_keys(struct ft5x06_device *ftdev)
-{
-    struct ft5x06_keys * keys = &(ftdev->ftdata->keys);
-    int ret;
-
-	FT5X06_DEBUG("report keys..");
-    ret = report_keys_event( ftdev->key_input, keys->keymap, 1);
-    ret = report_keys_event( ftdev->key_input, (keys->keymap^keys->oldmap) & (keys->oldmap), 0);
-    if ( !ret ) {
-        input_sync(ftdev->key_input);
-
-    }
-    keys->oldmap = keys->keymap;
-    keys->keymap = 0;
-}
-
-static void ft5x06_report_keys_release(struct ft5x06_device *ftdev)
-{
-    struct ft5x06_keys *keys = &(ftdev->ftdata->keys);
-    int ret = 0;
-
-    report_keys_event( ftdev->key_input, keys->oldmap, 0);
-    input_sync(ftdev->key_input);
-}
-#else
 static inline int id2code(int id)
 {
     return -EEXIST;
 }
-
-#ifndef PROTOCOL_B
-static int report_keys_event( struct input_dev *input, unsigned long map, int type)
-{
-    return 0;
-}
-
-static void ft5x06_report_keys(struct ft5x06_device *ftdev)
-{
-}
-
-static void ft5x06_report_keys_release(struct ft5x06_device *ftdev)
-{
-}
-#endif
 
 static inline int position2key(unsigned int x, 
     unsigned int y)
 {
     return -1;
 }
-#endif
-
 
 static int ft5x06_reset( struct ft5x06_device *ftdev)
 {
@@ -1142,10 +1014,6 @@ static int ft5x06_read_points( struct ft5x06_device *ftdev,
     unsigned int x, y;
     enum FT_EVENT_TYPE type;
     
-#ifdef HAS_VIRTUAL_KEY
-    int kcnt = 0
-#endif
-    
     if ( !ftdev || !data )
         return -EFAULT;
 
@@ -1214,43 +1082,29 @@ static int ft5x06_read_points( struct ft5x06_device *ftdev,
 
             }
 #endif
-            printk("end:x:%d, y:%d\n", x, y);
+            //printk("end:x:%d, y:%d\n", x, y);
 
             data->points[pcnt].x = x;
             data->points[pcnt].y = y; 
             data->points[pcnt].type = type;
             data->points[pcnt].id = VALUE_ID( data->rawData[i + FT5X06_Y_OFFSET]);
             data->points[pcnt].weight = data->rawData[i+FT5X06_WEIGHT_OFFSET];
+			data->points[pcnt].area =
+				VALUE_AREA(data->rawData[i+FT5X06_MISC_OFFSET]);
+			data->points[pcnt].direction =
+				VALUE_DIRECTION(data->rawData[i+FT5X06_MISC_OFFSET]);
+			data->points[pcnt].speed =
+				VALUE_SPEED(data->rawData[i+FT5X06_MISC_OFFSET]);
+            //printk("[%d]:x:%d, y:%d, type:%d\n", data->points[pcnt].id,
+			//		x, y, type);
             pcnt++;
             continue;
 
-
-#ifdef HAS_VIRTUAL_KEY
-#if CFG_FT_USE_CONFIG
-            if ( x >= cfg_dts.xMax ) {
-#else
-            //if ( x >= FT5X06_X_MAX ) {
-#endif
-                int id;
-                id = position2key(x,y);
-                if ( id >= 0) {
-                    kcnt++;
-                    set_bit(id, &data->keys.keymap);
-                }
-            }
-#endif            
         }
 		data->lastValidCnt = data->validPointCnt ? data->validPointCnt : pcnt;
         data->validPointCnt = pcnt;
-#ifdef HAS_VIRTUAL_KEY
-		data->lastValidKeyCnt = data->validKeyCnt ? data->validKeyCnt : kcnt;
-		data->validKeyCnt = kcnt;
-#endif        
     } else {
 		data->validPointCnt = 0;
-#ifdef HAS_VIRTUAL_KEY
-		data->validKeyCnt = 0;
-#endif
 	}
     
 out:
@@ -1258,47 +1112,133 @@ out:
     return err;
 }
 
-#ifndef PROTOCOL_B
-static int ft5x06_report_event(struct ft5x06_device *ftdev, struct ft5x06_point*pos)
+#define TOUCHES	(ftdev->ftdata->touches)
+#define	POINTS	(ftdev->ftdata->points)
+static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 {
-    int err = 0;
-    struct input_dev *input = ftdev->input_dev;
+	int err = 0, finger, event, found;
+    enum FT_EVENT_TYPE  type;
 
-    if ( pos ) {
-        switch( pos->type ) {
-            case PRESS_EVENT:
-            case CONTACT_EVENT:
-                FT5X06_DEBUG("Press event:");
-                input_report_abs( input, ABS_MT_TOUCH_MAJOR, 100);
-                input_report_abs( input, ABS_MT_PRESSURE, 100);
-                break;
-            case RELEASE_EVENT:
-                FT5X06_DEBUG("Release event");
-                input_report_abs( input, ABS_MT_PRESSURE, 0);
-                input_report_abs( input, ABS_MT_TOUCH_MAJOR, 0);
-                input_report_abs( input, ABS_MT_WIDTH_MAJOR, 0);
-                break;
-            default:
-                FT5X06_DEBUG("Invalid event");
-                return 0;
-        }
-        printk("(x,y):(%u, %u)\n", pos->x, pos->y);
-        input_report_abs( input, ABS_MT_POSITION_X, pos->x);
-        input_report_abs( input, ABS_MT_POSITION_Y, pos->y);
-        input_report_abs( input, ABS_MT_TRACKING_ID, pos->id);
-        input_mt_sync(input);
-    }
+    if( !ftdev || !ftdev->ftdata )
+        return -EFAULT;
 
-    return err;
-}
+//	if (ftdev->ftdata->validPointCnt == 0) {
+//		/* no touch event, state no change */
+//		return 0;
+//	}
+
+	for (finger = 0; finger < FT5X06_MAX_POINT; finger++) {
+		if (POINTS[finger].id >= FT5X06_MAX_TOUCH) {
+			/* touch count limit */
+			continue;
+		}
+		found = -1;
+		for (event = 0; event < ftdev->ftdata->validPointCnt; event++) {
+			/* search finger.id event */
+			if (POINTS[event].id == TOUCHES[finger].id) {
+				found = event;
+				break;
+			}
+		}
+		if (found != -1) {
+			/* finger.id touch event found */
+			type = POINTS[found].type;
+			TOUCHES[finger].type = type;
+			TOUCHES[finger].weight = POINTS[found].weight;
+			TOUCHES[finger].x = POINTS[found].x;
+			TOUCHES[finger].y = POINTS[found].y;
+			TOUCHES[finger].id = POINTS[found].id;
+			TOUCHES[finger].area = POINTS[found].area;
+			TOUCHES[finger].direction = POINTS[found].direction;
+			TOUCHES[finger].speed = POINTS[found].speed;
+			if ((type == PRESS_EVENT) || (type == CONTACT_EVENT)) {
+				/* touch down or move event */
+				if (TOUCHES[finger].state == TOUCH_NOUSE) {
+					TOUCHES[finger].state = TOUCH_DOWN;
+					printk("[FT5x06] [%d] down (%d,%d)\n",
+							finger, TOUCHES[finger].x, TOUCHES[finger].y);
+				} else {
+					TOUCHES[finger].state = TOUCH_MOVE;
+					//printk("[FT5x06] [%d] move (%d,%d)\n",
+					//		finger, TOUCHES[finger].x, TOUCHES[finger].y);
+				}
+			} else {
+				/* touch up event */
+				TOUCHES[finger].state = TOUCH_UP;
+				printk("[FT5x06] [%d] up\n", finger);
+			}
+		} else {
+			/* finger.id touch event not found */
+			/* if previous event is down or move, then touch up */
+			if ((TOUCHES[finger].state == TOUCH_DOWN) ||
+				(TOUCHES[finger].state == TOUCH_MOVE)) {
+				TOUCHES[finger].weight = 0;	/* PRESSURE = 0 */
+				TOUCHES[finger].state = TOUCH_UP;
+				printk("[FT5x06] [%d] up (no event)\n", finger);
+			}
+		}
+	}
+
+#if 0
+	for (finger = 0; finger < FT5X06_MAX_TOUCH; finger++) {
+		if (TOUCHES[finger].state == TOUCH_NOUSE)
+			continue;
+        printk("[FT5x06] [%d] state = %d (%d,%d,%d)\n", finger,
+				TOUCHES[finger].state,
+				TOUCHES[finger].x, TOUCHES[finger].y, TOUCHES[finger].weight);
+	}
 #endif
 
-#ifdef PROTOCOL_B
+	return err;
+}
+#undef TOUCHES
+
+#if 1
+#define TOUCHES	(ftdev->ftdata->touches)
+#define REPORT_MT(x, y, amplitude, width, pressure) \
+do {     \
+	input_report_abs(input, ABS_MT_POSITION_X, x);           \
+	input_report_abs(input, ABS_MT_POSITION_Y, y);           \
+	input_report_abs(input, ABS_MT_TOUCH_MAJOR, amplitude);  \
+	input_report_abs(input, ABS_MT_WIDTH_MAJOR, width);      \
+	input_report_abs(input, ABS_MT_PRESSURE, pressure);      \
+} while (0)
+static int ft5x06_report_b(struct ft5x06_device *ftdev)
+{
+	struct input_dev *input;
+	int finger;
+
+    if( !ftdev || !ftdev->ftdata )
+        return -EFAULT;
+
+	input = ftdev->input_dev;
+
+	for (finger = 0; finger < FT5X06_MAX_POINT; finger++) {
+		if (TOUCHES[finger].state == TOUCH_NOUSE)
+			continue;
+		input_mt_slot(input, TOUCHES[finger].id);
+		input_mt_report_slot_state(input,
+				MT_TOOL_FINGER, !!TOUCHES[finger].weight);
+		if (TOUCHES[finger].state == TOUCH_UP) {
+			TOUCHES[finger].state = TOUCH_NOUSE;
+			continue;
+		}
+		REPORT_MT(
+				TOUCHES[finger].x, TOUCHES[finger].y,
+				TOUCHES[finger].weight, /* touch major */
+				TOUCHES[finger].area, /* width major */
+				TOUCHES[finger].weight /* pressure*/
+				);
+	}
+	input_sync(input);
+	return 0;
+}
+#undef TOUCHES
+#undef REPORT_MT
+#else
 static int ft5x06_report_b(struct ft5x06_device *ftdev)
 {
 		int i = 0;
-		int  ts_press = 0;
-		static int  ts_release = 0;
 		struct ft5x06_data *data = ftdev->ftdata;
 		struct input_dev *input = ftdev->input_dev;
 		struct ft5x06_point*pos = &data->points[i];
@@ -1338,72 +1278,6 @@ static int ft5x06_report_b(struct ft5x06_device *ftdev)
 		}
 		//* Modify by Hayden.Hu -- end
 
-    return 0;
-}
-#else
-static int ft5x06_report(struct ft5x06_device *ftdev)
-{
-    int i = 0;
-    struct ft5x06_data *data = ftdev->ftdata;
-
-    if( !ftdev || !ftdev->ftdata )
-        return -EFAULT;
-
-#ifdef HAS_VIRTUAL_KEY
-	if ( !data->validPointCnt && !data->validKeyCnt )
-#else 
-    if ( !data->validPointCnt )
-#endif
-    {
-		ft5x06_report_release(ftdev);
-		ft5x06_report_keys_release(ftdev);
-		ft5x06_release_post(ftdev);
-	} else {
-	    for ( i = 0; i < data->validPointCnt; i++ ) {
-	        ft5x06_report_event(ftdev, &data->points[i]);
-	    }
-	    
-	    input_sync(ftdev->input_dev);
-#ifdef HAS_VIRTUAL_KEY
-		ft5x06_report_keys(ftdev);
-		input_sync(ftdev->key_input);
-#endif
-	}
-	
-    return 0;
-}
-#endif
-
-#ifndef PROTOCOL_B
-static void ft5x06_release_post(struct ft5x06_device *ftdev)
-{
-	ftdev->ftdata->lastValidCnt = ftdev->ftdata->validPointCnt = 0;
-#ifdef HAS_VIRTUAL_KEY
-	ftdev->ftdata->lastValidKeyCnt = ftdev->ftdata->validKeyCnt = 0;
-	ftdev->ftdata->keys.keymap = ftdev->ftdata->keys.oldmap = 0;
-#endif    
-}
-
-static int ft5x06_report_release(struct ft5x06_device *ftdev)
-{
-    int i = 0;
-    struct ft5x06_data *data = ftdev->ftdata;
-
-    if ( !ftdev || !ftdev->ftdata )
-        return -EFAULT;
-
-    for ( i = 0; i < data->lastValidCnt; i++ ) {        
-	input_report_key( ftdev->input_dev, BTN_TOUCH, 0);
-        input_report_abs( ftdev->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-        input_report_abs( ftdev->input_dev, ABS_MT_WIDTH_MAJOR, 0);
-        input_report_abs( ftdev->input_dev, ABS_MT_PRESSURE, 0);
-        input_report_abs( ftdev->input_dev, ABS_MT_POSITION_X, data->points[i].x);
-        input_report_abs( ftdev->input_dev, ABS_MT_POSITION_Y, data->points[i].y);
-        input_report_abs( ftdev->input_dev, ABS_MT_TRACKING_ID, data->points[i].id);
-        input_mt_sync(ftdev->input_dev);
-    }
-    
-    input_sync(ftdev->input_dev);
     return 0;
 }
 #endif
@@ -1457,7 +1331,7 @@ static int ft5x06_init_config(struct i2c_client *client, struct ft5x06_config *f
     return err;
 }
 
-// 处理工作队列
+// Kernel therad
 static void ft5x06_work(struct work_struct *work)
 {
     struct ft5x06_device *ftdevice = container_of(work, struct ft5x06_device, work);
@@ -1466,13 +1340,10 @@ static void ft5x06_work(struct work_struct *work)
     ret = ft5x06_read_points(ftdevice, ftdevice->ftdata);
     //enable_irq(ftdevice->irq);/* binzhang(2012/9/13):  */
 //    printk("ret is %d \n",ret);
-    #ifdef PROTOCOL_B
+	if (ret == 0) {
+         ft5x06_touch_event(ftdevice);
          ft5x06_report_b(ftdevice);
-    #else
-			 		if ( !ret ){
-			         ft5x06_report(ftdevice);
-			    }
-    #endif
+	}
 	
 }
 
@@ -1744,17 +1615,25 @@ static ssize_t tp_xyswap_store(struct device *dev,
 	cfg_dts.XYSwap=data;
     return count;
 }
+/**************************************************************************/
+static ssize_t tp_resolution_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%dx%d\n",cfg_dts.xMax, cfg_dts.yMax);
+}
 
 static DEVICE_ATTR(tp_rotate, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_rotate_show, tp_rotate_store);
 static DEVICE_ATTR(tp_xrevert, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_xrevert_show, tp_xrevert_store);
 static DEVICE_ATTR(tp_yrevert, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_yrevert_show, tp_yrevert_store);
 static DEVICE_ATTR(tp_xyswap, 	S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_xyswap_show, tp_xyswap_store);
+static DEVICE_ATTR(tp_resolution, S_IRUGO, tp_resolution_show, NULL);
 
 static struct attribute *tp_attributes[] = { 
     &dev_attr_tp_rotate.attr,
 	 &dev_attr_tp_xrevert.attr,
 	  &dev_attr_tp_yrevert.attr,
 	  &dev_attr_tp_xyswap.attr,
+	&dev_attr_tp_resolution.attr,
     NULL
 };
 
@@ -1775,9 +1654,7 @@ static int ft5x06_probe(struct i2c_client *client,
     struct ft5x06_config *ftconfig = NULL;
     struct workqueue_struct *wq = NULL;
     int err = 0;
-#ifdef HAS_VIRTUAL_KEY
-    struct input_dev *key_input = NULL;
-#endif
+	int i;
 
     err = i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA);
     if ( !err ) {
@@ -1801,6 +1678,10 @@ static int ft5x06_probe(struct i2c_client *client,
         err = -ENOMEM;
         goto create_data_failed;
     }
+	for (i = 0; i < FT5X06_MAX_POINT; i++) {
+		ftdata->touches[i].id = i;	/* touch finger id */
+		ftdata->touches[i].state = TOUCH_NOUSE;
+	}
 
     ftconfig = (struct ft5x06_config *)kzalloc( \
         sizeof(struct ft5x06_config), GFP_KERNEL);
@@ -1817,15 +1698,6 @@ static int ft5x06_probe(struct i2c_client *client,
         goto create_input_failed;
     }
 
-#ifdef HAS_VIRTUAL_KEY
-    key_input = input_allocate_device();
-    if ( !input ) {
-        FT5X06_WARNNING("Create key input device failed");
-        err = -ENOMEM;
-        goto create_key_input_failed;
-    }
-#endif	
-
     wq = create_singlethread_workqueue("ft5x06_touch");
     if ( !wq ) {
         FT5X06_WARNNING("Create workqueue failed");
@@ -1837,9 +1709,6 @@ static int ft5x06_probe(struct i2c_client *client,
     ftdev->ftconfig = ftconfig;
     ftdev->ftdata = ftdata;
     ftdev->input_dev = input;    
-#ifdef HAS_VIRTUAL_KEY
-    ftdev->key_input = key_input;
-#endif
 
 #if CFG_FT_USE_CONFIG
     ftdev->irq =cfg_dts.sirq;
@@ -1878,6 +1747,21 @@ static int ft5x06_probe(struct i2c_client *client,
     input->id.product = ftdev->ftconfig->product;
     ///////////////
  
+#if 1
+    __set_bit(EV_ABS, input->evbit);
+    __set_bit(EV_SYN, input->evbit);
+	input_mt_init_slots(input, FT5X06_MAX_POINT, INPUT_MT_DIRECT);
+	input_set_abs_params(input,
+			ABS_MT_POSITION_X, 0, ftdev->ftconfig->max.x-1, 0, 0);
+	input_set_abs_params(input,
+			ABS_MT_POSITION_Y, 0, ftdev->ftconfig->max.y-1, 0, 0);
+	input_set_abs_params(input,
+			ABS_MT_TOUCH_MAJOR, 0, ftdev->ftconfig->max.weight, 0, 0);
+	input_set_abs_params(input,
+			ABS_MT_WIDTH_MAJOR, 0, 40, 0, 0);
+	input_set_abs_params(input,
+			ABS_MT_PRESSURE, 0, ftdev->ftconfig->max.weight, 0, 0);
+#else
     __set_bit(INPUT_PROP_DIRECT,input->propbit);
 
     ///////////////
@@ -1893,6 +1777,7 @@ static int ft5x06_probe(struct i2c_client *client,
 	input_set_abs_params(input, ABS_X, 0, ftdev->ftconfig->max.x, 0, 0);
 #endif
 //* Modify by Hayden.Hu -- end
+#endif
 
 
     printk("ft5x06 probe v2.0 i file,FT5X0X_DOWNLOAD_FIRM=(%d)\n", FT5X0X_DOWNLOAD_FIRM);
@@ -1908,27 +1793,6 @@ printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         FT5X06_WARNNING("Register input failed");
         goto input_register_failed;
     }
-
-#ifdef HAS_VIRTUAL_KEY
-    key_input->name = "touch-key";
-    key_input->id.bustype = BUS_HOST;
-    key_input->id.version = ftdev->ftconfig->version;
-    key_input->id.vendor = ftdev->ftconfig->vendor;
-    key_input->id.product = ftdev->ftconfig->product;
-    key_input->keycode = key_map;
-    key_input->keycodesize = sizeof(key_map[0].key_code);
-    key_input->keycodemax = ARRAY_SIZE(key_map);
-    set_bit(EV_KEY, key_input->evbit);
-    for( i = 0; i < KEY_ID_MAX; i++) {
-        set_bit(key_map[i].key_code, key_input->keybit);
-    }
-
-    err = input_register_device(ftdev->key_input);
-    if ( err ) {
-        FT5X06_WARNNING("Register key input failed");
-        goto key_iput_register_failed;
-    }
-#endif
 
     device_enable_async_suspend(&client->dev);
     err = request_irq(ftdev->irq, ft5x06_interrupt, \
@@ -1947,20 +1811,11 @@ printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
     return 0;
 
 irq_request_failed:
-#ifdef HAS_VIRTUAL_KEY
-    input_unregister_device(key_input);
-key_iput_register_failed:    
-#endif
-
     input_unregister_device(input);
 input_register_failed:
 init_config_failed:    
     destroy_workqueue(wq);
 create_workqueue_failed:
-#ifdef HAS_VIRTUAL_KEY
-    input_free_device(key_input);
-create_key_input_failed:
-#endif    
     input_free_device(input);
 create_input_failed:
     kfree(ftconfig);
