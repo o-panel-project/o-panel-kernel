@@ -75,7 +75,6 @@ static int atc2603c_ictype = PMU_NOT_USED;
 static int earphone_irq = -1;
 
 static int earphone_poll_ms = 50;
-static	int run_one_time = 1;
 
 
 struct reg_val {
@@ -687,7 +686,6 @@ const struct snd_kcontrol_new atc2603c_snd_controls[] = {
 #ifdef CONFIG_SND_UBUNTU
 static int atc2603c_playback_set_controls(struct snd_soc_codec *codec)
 {
-    snd_soc_update_bits(codec, DAC_ANALOG1, 0x3f << DAC_ANALOG1_VOLUME_SFT, 0x28 << DAC_ANALOG1_VOLUME_SFT);
     snd_soc_update_bits(codec, DAC_ANALOG3, 0x1 << DAC_ANALOG3_PAEN_FR_FL_SFT, 0x01 << DAC_ANALOG3_PAEN_FR_FL_SFT);
     snd_soc_update_bits(codec, DAC_ANALOG3, 0x1 << DAC_ANALOG3_PAOSEN_FR_FL_SFT, 0x01 << DAC_ANALOG3_PAOSEN_FR_FL_SFT);
     snd_soc_update_bits(codec, DAC_DIGITALCTL, 0x03 << DAC_DIGITALCTL_DEFL_SFT, 0x03 << DAC_DIGITALCTL_DEFL_SFT);
@@ -1325,11 +1323,6 @@ static int atc2603c_audio_hw_params(struct snd_pcm_substream *substream,
 			AUDIOINOUT_CTL, 0x01 << 1, 0x01 << 1);
 		snd_soc_update_bits(codec,
 			DAC_ANALOG3, 0x03, 0x03);
-	if(run_one_time == 1){
-    		snd_soc_update_bits(codec, DAC_VOLUMECTL0, 0xff << DAC_VOLUMECTL0_DACFL_VOLUME_SFT, 0xb5 << DAC_VOLUMECTL0_DACFL_VOLUME_SFT);
-    		snd_soc_update_bits(codec, DAC_VOLUMECTL0, 0xff << DAC_VOLUMECTL0_DACFR_VOLUME_SFT, 0xb5 << DAC_VOLUMECTL0_DACFR_VOLUME_SFT);
-    		run_one_time++;
-	}
 #ifdef CONFIG_SND_UBUNTU
         atc2603c_playback_set_controls(codec);
 		audio_set_output_mode(substream, O_MODE_I2S);
@@ -1541,8 +1534,9 @@ static int atc2603c_probe(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, AUDIOINOUT_CTL, 0x1 << 2, 0);
 	//snd_err("%s %d\n", __FILE__,__LINE__);
 	snd_soc_update_bits(codec, AUDIOINOUT_CTL, 0x1 << 3, 0);	
-		
-
+    	snd_soc_update_bits(codec, DAC_ANALOG1, 0x3f << DAC_ANALOG1_VOLUME_SFT, 0x28 << DAC_ANALOG1_VOLUME_SFT);
+    	snd_soc_update_bits(codec, DAC_VOLUMECTL0, 0xff << DAC_VOLUMECTL0_DACFL_VOLUME_SFT, 0xb5 << DAC_VOLUMECTL0_DACFL_VOLUME_SFT);
+    	snd_soc_update_bits(codec, DAC_VOLUMECTL0, 0xff << DAC_VOLUMECTL0_DACFR_VOLUME_SFT, 0xb5 << DAC_VOLUMECTL0_DACFR_VOLUME_SFT);
 	return 0;
 }
 
