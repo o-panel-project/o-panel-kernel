@@ -103,6 +103,11 @@ const struct linux_logo * __init_refok fb_find_logo(int depth)
 #ifdef CONFIG_LOGO_ACTIONS_CLUT224
 		logo = &logo_actions_clut224;
 #endif
+#ifdef CONFIG_LOGO_WPC_CLUT224
+                /* WPC Linux logo */
+                logo = &logo_wpc_clut224;
+#endif
+
 	}
 	return logo;
 }
