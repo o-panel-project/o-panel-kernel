@@ -102,7 +102,7 @@ static struct _user_gpio {
 	{22, "GPIO_22", 1, 0, 1, 1 },   // output low - lcd power sequence
 //	{56, "GPIO_56", 0, 0, 0, 0 },   // Input pull low - Cradle status input
 //	{57, "GPIO_57", 0, 0, 0, 0 },   // input pull low - Bat2 detect input
-	{116, "GPIO_116", 1, 0, 0, 0 },   // output low - soft power off trigger
+	{116, "GPIO_116", 1, 0, 0, 1 },   // output low - soft power off trigger,already initilized when board init.
 	{18, "GPIO_18", 1, 0, 0, 0 },   // output low - bat1 charger on/off
 //	{148, "GPIO_148", 0, 0, 0, 0 }, // input pull low - no specified yet
 };
@@ -644,8 +644,8 @@ static struct _pin_table {
 //	{ GPIO_PIN_BAT2_FAULT_N,	"BAT2_FAULTN",	0, 0, 0 },
 //	{ GPIO_PIN_BAT2_FASTCHG_N,	"BAT2_FASTCN",	0, 0, 0 },
 //	{ GPIO_PIN_BAT2_FULLCHG_N,	"BAT2_FULLCN",	0, 0, 0 },
-	//{ GPIO_PIN_WIFI_PD_N,		"WIFI_PDN",		1, 0, 0 },	// Leave mmc3 to request it.
-	//{ GPIO_PIN_WIFI_RESET_N,	"WIFI_RESETN",	1, 0, 0 },
+	//{ GPIO_PIN_WIFI_PD_N,		"WIFI_PDN",		1, 0, 1 },	// Leave mmc3 to request it.
+	//{ GPIO_PIN_WIFI_RESET_N,	"WIFI_RESETN",	1, 0, 1 },
 	{ GPIO_PIN_ADCIN2_SEL,		"ADCIN2_SEL",   1, 0, 0 },
 //	#if defined(GPIO_PIN_MMC1_ON_N)
 //		{ GPIO_PIN_MMC1_ON_N, 	"MMC1_ONN",		1, 0, 0 },
@@ -690,6 +690,8 @@ static int __init wpc_io_init(void) {
 	// Colman start, 110412
 	// enable user gpio pin
 	for (i = 0; i < ARRAY_SIZE(user_gpio); i++){
+		if (user_gpio[i].requested == 1)
+			continue;
 		if (!gpio_request(user_gpio[i].gpio, user_gpio[i].name)) {
 			user_gpio[i].requested = 1;
 			set_dir_gpio(&user_gpio[i]);
