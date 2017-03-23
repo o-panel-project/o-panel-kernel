@@ -652,6 +652,14 @@ config INPUT_XEN_KBDDEV_FRONTEND
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called xen-kbdfront.
+
+config INPUT_WPC_PWRBUTTON
+        bool "WPC o-panel Power button Driver"
+        help
+          Say Y here if you want to enable power key reporting via the
+          o-panel power mcu chips.
+
+
 	  
 source "drivers/input/misc/gsensor/Kconfig"
 

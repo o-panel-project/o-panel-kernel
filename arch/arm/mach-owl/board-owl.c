@@ -84,6 +84,27 @@ struct platform_device owl_uart_device0 = {
 };
 
 
+#if defined(CONFIG_INPUT_WPC_PWRBUTTON)
+
+#include <linux/wpc_pwrbutton.h>
+#define GPIO_PWR_SYSREQ  36
+#define GPIO_PWR_SOFTPOWEROFF 116
+
+static struct wpc_pwrbutton_platform_data wpc_pwrbutton_pdata = {
+        .gpio_sys_req = GPIO_PWR_SYSREQ,
+        .gpio_soft_poweroff = GPIO_PWR_SOFTPOWEROFF,
+};
+
+static struct platform_device owl_wpc_pwrbutton_device = {
+        .name   = WPC_PWRBUTTON_NAME,
+        .id             = -1,
+        .dev    = {
+                .platform_data = &wpc_pwrbutton_pdata,
+        },
+};
+
+#endif
+
 
 /************************************************/
 
@@ -103,6 +124,9 @@ static struct platform_device *owl_platform_devices[] __initdata = {
 #endif
 	&owl_uart_device0,
 	&owl_vout_device,
+#if defined(CONFIG_INPUT_WPC_PWRBUTTON)
+	&owl_wpc_pwrbutton_device,
+#endif
 };
 
 #ifdef CONFIG_OF
@@ -126,8 +150,9 @@ static void __init owl_board_init(void)
 	if (ret)
 		pr_warn("of_platform_populate() fail\n");
 #endif
-
 	pr_info("%s()\n", __func__);
+
+
 }
 
 #ifdef CONFIG_OF
