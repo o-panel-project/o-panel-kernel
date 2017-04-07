@@ -30,6 +30,9 @@
 #include <linux/platform_device.h>
 #include <linux/wpc_pwrbutton.h>
 #include <linux/gpio.h>
+#include <linux/irq.h>
+#include <asm/irq.h>
+#include <mach/irqs.h>
 
 static int user_monitor_ready = 0;
 
@@ -70,18 +73,17 @@ static irqreturn_t wpc_pwrbutton_irq(int irq, void *_pwr)
 	struct input_dev *pwr = _pwr;
 	struct wpc_pwrbutton_platform_data *pdata = pwr->dev.parent->platform_data;
 //	int gpio = (int)pwr->dev.parent->platform_data;
-	int val;
-
+	unsigned int val;
 	val = gpio_get_value(pdata->gpio_sys_req);
 	dev_notice(pwr->dev.parent,
-			"j3 Power button (gpio-%d) detected (%d).\n",
+			"WPC o-panel Power button (gpio-%d) detected (%d).\n",
 			pdata->gpio_sys_req, val);
-	if (val != 1)
+	if (val < 1)
 		return IRQ_HANDLED;
 
 	if (!user_monitor_ready) {
 		/* Power off right a way */
-		dev_err(pwr->dev.parent, "j3 Power down.\n");
+		dev_err(pwr->dev.parent, "WPC o-panel Power down.\n");
 		gpio_set_value_cansleep(pdata->gpio_soft_poweroff, 1);
 		return IRQ_HANDLED;
 	}
@@ -93,7 +95,7 @@ static irqreturn_t wpc_pwrbutton_irq(int irq, void *_pwr)
 	return IRQ_HANDLED;
 }
 
-#define GPIO_PWR_SYSREQ  36
+#define GPIO_PWR_SYSREQ  115
 #define GPIO_PWR_SOFTPOWEROFF 116
 
 static int __init wpc_pwrbutton_init_hw(void)
@@ -131,10 +133,9 @@ static int wpc_pwrbutton_probe(struct platform_device *pdev)
 	int irq,err;
 //	int gpio = pdata->gpio_sys_req;
 	wpc_pwrbutton_init_hw();
-	printk("aaaaaaaaaaaa %d\n",pdata->gpio_sys_req);
 	irq = gpio_to_irq(pdata->gpio_sys_req);
 	
-	dev_notice(&pdev->dev, "probe irq-%d\n", irq);
+	dev_notice(&pdev->dev, "probe gpio-%d,irq-%d\n",pdata->gpio_sys_req, irq);
 
 	pwr = input_allocate_device();
 	if (!pwr) {
@@ -210,7 +211,7 @@ static void __exit wpc_pwrbutton_exit(void)
 module_exit(wpc_pwrbutton_exit);
 
 MODULE_ALIAS("platform:wpc_pwrbutton");
-MODULE_DESCRIPTION("WPC j3 Power Button");
+MODULE_DESCRIPTION("WPC o-panel Power Button");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Peter De Schrijver <peter.de-schrijver@nokia.com>");
 MODULE_AUTHOR("Felipe Balbi <felipe.balbi@nokia.com>");
