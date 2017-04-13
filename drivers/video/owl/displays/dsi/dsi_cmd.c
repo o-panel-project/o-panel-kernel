@@ -169,7 +169,6 @@ void send_cmd(struct platform_device *pdev)
 
 
 
-*/
     char a[] = {0xF0,0x55,0xAA,0x52,0x08,0x00 };
 	char b[] = {0xB2,0x25};
 	char c[] = {0xBB,0x63,0x63};
@@ -303,6 +302,7 @@ void send_cmd(struct platform_device *pdev)
 
 
 
+*/
 
 }
 

@@ -1060,37 +1060,36 @@
 
 		dsi_reg:val{	
 			dsi_ctrl =< 0x1340>;
-			dsi_size = <0x5000000>;
+			dsi_size = <0x3200000>;
 			dsi_color = <0xff0000>;
-			dsi_rgbht0 = <0xc0c0>;
+			dsi_rgbht0 = <0x12d95>;
 			dsi_rgbht1 = <0x3e8>;
-			dsi_rgbvt0 = <0x1f08520>;
-			dsi_rgbvt1 =<0x11>;
+			dsi_rgbvt0 = <0x1f0e337>;
+			dsi_rgbvt1 =<0x10>;
 			dsi_pack_cfg = <0x0>;
-			dsi_pack_header =<0x960>;
+			dsi_pack_header =<0xf00>;
 			dsi_vedio_cfg = <0x30c>;
-			dsi_phy_t0 = <0xa5a>;
-			dsi_phy_t1 =<0x1b12>;
-			dsi_phy_t2 = <0x2f05>;
+			dsi_phy_t0 = <0x125b>;
+			dsi_phy_t1 =<0x1b13>;
+			dsi_phy_t2 = <0x2f06>;
 			dsi_phy_ctrl = <0xfc94>;
 			dsi_pin_map = <0x688>;
-			cmu_dsipll_clk = <0x12301>;
-
+			cmu_dsipll_clk = <0x12c01>;
 
 		};
 		
 		dsi_mode:mode@1280x800p60 {
 			refresh = <60>;
-			xres = <800>;    
-			yres = <1280>;
+			xres = <1280>;    
+			yres = <800>;
 			/*in pico second, 0.000 000 000 001s*/
-			pixclock = <14450>; 
-			left_margin = <48>;
-			right_margin = <16>;
-			upper_margin = <12>;
-			lower_margin = <16>;
-			hsync_len = <16>;
-			vsync_len = <4>;
+			pixclock = <14063>; 
+			left_margin = <75>;
+			right_margin = <25>;
+			upper_margin = <8>;
+			lower_margin = <8>;
+			hsync_len = <60>;
+			vsync_len = <7>;
 			/*0: FB_VMODE_NONINTERLACED, 1:FB_VMODE_INTERLACED*/
 			vmode = <0>;
 		};
