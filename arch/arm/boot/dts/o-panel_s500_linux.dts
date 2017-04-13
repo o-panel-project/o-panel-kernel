@@ -536,7 +536,7 @@
                                 pinctrl-names = "default";
                                 pinctrl-0 = <&i2s0_state_default>;				
 				//earphone_detect_gpios = <&gpio 21 0>; /*0: high, 1: low hr280ac GPIOA21 0*/
-				speaker_en_gpios = <&gpio 40 0>; /* GPIOB8 0: high, 1: low*/
+				speaker_en_gpios = <&gpio 40 1>; /* GPIOB8 0: high, 1: low*/
 				earphone_output_mode = <0>; /*0: direct mode, 1: undirect mode*/
 				mic_num = <1>; /*just suport 1, 2*/
 				mic0_gain = < 0xf 0xf >; /*<Lchannel,Rchannel> [0x0~0xF]*/

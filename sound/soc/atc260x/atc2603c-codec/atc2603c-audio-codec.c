@@ -853,6 +853,7 @@ static const struct snd_soc_dapm_widget atc2603c_dapm_widgets[] = {
 	/* output lines */
 	SND_SOC_DAPM_OUTPUT("HP"),
 	SND_SOC_DAPM_OUTPUT("SP"),
+
 };
 
 static const struct snd_soc_dapm_route atc2603c_dapm_routes[] = {
@@ -1297,6 +1298,8 @@ static int atc2603c_audio_hw_params(struct snd_pcm_substream *substream,
 	/* enable the atc2603c i2s input function */
 	struct snd_soc_codec *codec = dai->codec;
 
+	gpio_direction_output(speaker_gpio_num, 1);
+
 	//printk("atc2603c_audio_hw_params %d", hw_init_flag);
 	if(hw_init_flag == false) {
 		//printk("request IRQ %d!!!!", earphone_irq);
@@ -1369,6 +1372,12 @@ static int atc2603c_audio_hw_free(
 
     if(atc2603c_open_count > 0)
         atc2603c_open_count--;
+
+
+	mdelay(10);
+	gpio_direction_output(speaker_gpio_num, 0);
+
+
 	return 0;
 }
 
