@@ -1070,7 +1070,7 @@
 			dsi_pack_header =<0xf00>;
 			dsi_vedio_cfg = <0x30c>;
 			dsi_phy_t0 = <0x125b>;
-			dsi_phy_t1 =<0x1b13>;
+			dsi_phy_t1 =<0x1b12>;
 			dsi_phy_t2 = <0x2f06>;
 			dsi_phy_ctrl = <0xfc94>;
 			dsi_pin_map = <0x688>;
