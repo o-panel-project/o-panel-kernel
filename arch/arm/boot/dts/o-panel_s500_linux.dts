@@ -705,8 +705,8 @@
 			ldo7: ldo7{
 				compatible = "actions,atc2603c-ldo7","actions,atc2603c-ldo";
 				regulator-name = "ldo7";
-				regulator-min-microvolt  = <2000000>;
-				regulator-max-microvolt = <2000000>;
+				regulator-min-microvolt  = <1800000>;
+				regulator-max-microvolt = <1800000>;
 				regulator-always-on;
 				regulator-suspend-off;
 			};
