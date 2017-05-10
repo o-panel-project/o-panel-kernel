@@ -87,12 +87,12 @@ struct platform_device owl_uart_device0 = {
 #if defined(CONFIG_INPUT_WPC_PWRBUTTON)
 
 #include <linux/wpc_pwrbutton.h>
-#define GPIO_PWR_SYSREQ  115
-#define GPIO_PWR_SOFTPOWEROFF 116
+//#define GPIO_PWR_SYSREQ  115
+//#define GPIO_PWR_SOFTPOWEROFF 116
 
 static struct wpc_pwrbutton_platform_data wpc_pwrbutton_pdata = {
-        .gpio_sys_req = GPIO_PWR_SYSREQ,
-        .gpio_soft_poweroff = GPIO_PWR_SOFTPOWEROFF,
+        .gpio_sys_req = 0/*GPIO_PWR_SYSREQ*/,
+        .gpio_soft_poweroff = 0/*GPIO_PWR_SOFTPOWEROFF*/,
 };
 
 static struct platform_device owl_wpc_pwrbutton_device = {

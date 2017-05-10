@@ -1182,7 +1182,7 @@
 		compatible = "wifi,bt,power,ctl";
 		//bt_power_gpio = <&gpio 16 0>;/*GPIOA20, high active*/   /*BT_WAKE*/
 		wifi_bt_power_gpios = <&gpio 120 0>; /* GPIOD30 */
-		bt_en_gpios = <&gpio 115 0>; /*GPIOB2, high active*/ 
+		//bt_en_gpios = <&gpio 115 0>; /*GPIOB2, high active*/ 
 		wifi_en_gpios = <&gpio 21 0>; /* GPIOB0 */
 	};
 
@@ -1253,5 +1253,39 @@
 	vde@b0280000{
 		corevdd-supply = <&vdd_core_dcdc>;
 		status = "okay";
+	};
+
+	wpcio-gpio {
+						/* <&gpio gpio# initial-value-if-Out> */
+		dipswitch1-gpios = <&gpio 124 0>;	/* GPIOD(28) I */
+		dipswitch2-gpios = <&gpio 125 0>;	/* GPIOD(29) I */
+		dipswitch3-gpios = <&gpio 126 0>;	/* GPIOD(30) I */
+		dipswitch4-gpios = <&gpio 127 0>;	/* GPIOD(31) I */
+		leds_green-gpios =  <&gpio 17 0>;	/* GPIOA(17) O */
+		leds_red-gpios =    <&gpio 19 0>;	/* GPIOA(19) O */
+		leds_orange-gpios = <&gpio 20 0>;	/* GPIOA(20) O */
+		battery_fast-gpios =  <&gpio 15 0>;	/* GPIOA(15) I */
+		battery_full-gpios =  <&gpio 14 0>;	/* GPIOA(14) I */
+		battery_fault-gpios = <&gpio 16 0>;	/* GPIOA(16) I */
+		battery_charge-gpios = <&gpio 18 1>;/* GPIOA(18) O */
+		usb_memory_pwr-gpios = <&gpio 87 1>;/* GPIOC(23) O */
+		usb_memory_overcur-gpios = <&gpio 34 0>;/* GPIOB(02) I */
+		usb_felica_pwr-gpios = <&gpio 88 1>;/* GPIOC(24) O */
+		sysen_adc_read-gpios = <&gpio 33 0>;/* GPIOB(01) O */
+
+		sysreq-gpios =        <&gpio 115 0>;/* GPIOD(19) I */
+		soft_poweroff-gpios = <&gpio 116 0>;/* GPIOD(20) O */
+
+		/* see wifi_bt_power_ctl.wifi_bt_power_gpios */
+		wifi_bt_power-gpios = <&gpio 120 0>;/* GPIOD(24) O */
+		/* see wifi_bt_power_ctl.wifi_en_gpios */
+		wifi_en-gpios =       <&gpio 21 0>; /* GPIOA(21) O */
+
+		/* see backlight.backlight_en_gpios */
+		backlight_en-gpios = <&gpio 22 0>;	/* GPIOA(22) O */
+		/* see dsi.dsi_power_gpios */
+		lcd_vcc_en-gpios   = <&gpio 23 0>;	/* GPIOA(23) O */
+		/* see ft5x06.reset_gpios */
+		tp_pwd_rst-gpios   = <&gpio 32 1>;	/* GPIOB(00) O */
 	};
 };
