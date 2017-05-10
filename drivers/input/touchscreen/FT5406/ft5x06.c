@@ -947,15 +947,29 @@ out:
 static int ft5x06_hw_init(void)
 {
 	int err = 0;
+#if 1
+	struct device_node *dts;
+	int gpio;
+	enum of_gpio_flags flags;
 	printlf();
-#if 1	
+	dts = of_find_node_by_name(NULL, "wpcio-gpio");
+	if (!dts) {
+		pr_err("%s: Could not find wpcio gpio node\n", __func__);
+	} else {
+		gpio = of_get_named_gpio_flags(dts, "tp_pwd_rst-gpios", 0, &flags);
+		if (gpio_is_valid(gpio)) {
+			gpio_reset = gpio;
+			pr_info("%s: tp_pwd_rst-gpios=%d\n", __func__, gpio);
+		}
+		of_node_put(dts);
+	}
     err = gpio_request(gpio_reset, FT5X06_NAME);
     if ( err ) {
 		err = -EINVAL;
         goto out;
 	}
 
-    err = gpio_direction_output(gpio_reset, 1);
+    err = gpio_direction_output(gpio_reset, flags & OF_GPIO_ACTIVE_LOW);
     if ( err ) {
 		err = -EINVAL;
         goto out;
@@ -1116,7 +1130,7 @@ out:
 #define	POINTS	(ftdev->ftdata->points)
 static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 {
-	int err = 0, finger, event, found;
+	int err = 0, finger, event, found, moved;
     enum FT_EVENT_TYPE  type;
 
     if( !ftdev || !ftdev->ftdata )
@@ -1132,6 +1146,10 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 			/* touch count limit */
 			continue;
 		}
+		if (TOUCHES[finger].id >= FT5X06_MAX_TOUCH) {
+			/* touch count limit */
+			continue;
+		}
 		found = -1;
 		for (event = 0; event < ftdev->ftdata->validPointCnt; event++) {
 			/* search finger.id event */
@@ -1141,6 +1159,12 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 			}
 		}
 		if (found != -1) {
+			moved = 0;
+			if (TOUCHES[finger].x != POINTS[found].x ||
+				TOUCHES[finger].y != POINTS[found].y ||
+				TOUCHES[finger].weight != POINTS[found].weight ||
+				TOUCHES[finger].area != POINTS[found].area)
+				moved = 1;
 			/* finger.id touch event found */
 			type = POINTS[found].type;
 			TOUCHES[finger].type = type;
@@ -1155,17 +1179,22 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 				/* touch down or move event */
 				if (TOUCHES[finger].state == TOUCH_NOUSE) {
 					TOUCHES[finger].state = TOUCH_DOWN;
-					printk("[FT5x06] [%d] down (%d,%d)\n",
-							finger, TOUCHES[finger].x, TOUCHES[finger].y);
+					FT5X06_DEBUG("[%d] down (%d,%d)(%d,%d,%d,%d)",
+						finger, TOUCHES[finger].x, TOUCHES[finger].y,
+						TOUCHES[finger].weight, TOUCHES[finger].area,
+						TOUCHES[finger].direction, TOUCHES[finger].speed);
 				} else {
 					TOUCHES[finger].state = TOUCH_MOVE;
-					//printk("[FT5x06] [%d] move (%d,%d)\n",
-					//		finger, TOUCHES[finger].x, TOUCHES[finger].y);
+					if (moved)
+						FT5X06_DEBUG("[%d] move (%d,%d)(%d,%d,%d,%d)",
+							finger, TOUCHES[finger].x, TOUCHES[finger].y,
+							TOUCHES[finger].weight, TOUCHES[finger].area,
+							TOUCHES[finger].direction, TOUCHES[finger].speed);
 				}
 			} else {
 				/* touch up event */
 				TOUCHES[finger].state = TOUCH_UP;
-				printk("[FT5x06] [%d] up\n", finger);
+				FT5X06_DEBUG("[%d] up", finger);
 			}
 		} else {
 			/* finger.id touch event not found */
@@ -1174,7 +1203,7 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 				(TOUCHES[finger].state == TOUCH_MOVE)) {
 				TOUCHES[finger].weight = 0;	/* PRESSURE = 0 */
 				TOUCHES[finger].state = TOUCH_UP;
-				printk("[FT5x06] [%d] up (no event)\n", finger);
+				FT5X06_DEBUG("[%d] up (no event)", finger);
 			}
 		}
 	}
@@ -1627,6 +1656,7 @@ static DEVICE_ATTR(tp_xrevert, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_xrevert_show, 
 static DEVICE_ATTR(tp_yrevert, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_yrevert_show, tp_yrevert_store);
 static DEVICE_ATTR(tp_xyswap, 	S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_xyswap_show, tp_xyswap_store);
 static DEVICE_ATTR(tp_resolution, S_IRUGO, tp_resolution_show, NULL);
+static DEVICE_ATTR(debug_switch, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP, debug_show, debug_store);
 
 static struct attribute *tp_attributes[] = { 
     &dev_attr_tp_rotate.attr,
@@ -1634,6 +1664,7 @@ static struct attribute *tp_attributes[] = {
 	  &dev_attr_tp_yrevert.attr,
 	  &dev_attr_tp_xyswap.attr,
 	&dev_attr_tp_resolution.attr,
+	&dev_attr_debug_switch.attr,
     NULL
 };
 

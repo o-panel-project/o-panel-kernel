@@ -123,7 +123,9 @@ static int __init wpc_pwrbutton_init_hw(
 			pdata->gpio_soft_poweroff = gpio;
 		else
 			pdata->gpio_soft_poweroff = GPIO_PWR_SOFTPOWEROFF;
+		of_node_put(dts);
 	}
+
         /* Setup gpio */
 		gpio = pdata->gpio_sys_req;
         err = gpio_request(gpio, "wpc_pwrbutton");
