@@ -104,7 +104,7 @@ enum OPADDR {
     OP_IDG_CHIP,
     OP_IDG_MODE,
     OP_IDG_PMODE,
-    OP_IDG_FIRMID,
+    OP_IDG_FIRMID = 0xa6,
     OP_IDG_STATE,
     OP_IDG_FT5201ID,
     OP_IDG_ERR,
