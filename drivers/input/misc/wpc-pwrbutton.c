@@ -33,6 +33,7 @@
 #include <linux/irq.h>
 #include <asm/irq.h>
 #include <mach/irqs.h>
+#include <linux/of_gpio.h>
 
 static int user_monitor_ready = 0;
 
@@ -98,13 +99,35 @@ static irqreturn_t wpc_pwrbutton_irq(int irq, void *_pwr)
 #define GPIO_PWR_SYSREQ  115
 #define GPIO_PWR_SOFTPOWEROFF 116
 
-static int __init wpc_pwrbutton_init_hw(void)
+static int __init wpc_pwrbutton_init_hw(
+		struct wpc_pwrbutton_platform_data *pdata)
 {
+	struct device_node *dts;
         int gpio = GPIO_PWR_SYSREQ;
         int err;
         pr_notice("%s\n", __func__);
 
+	dts = of_find_node_by_name(NULL, "wpcio-gpio");
+	if (!dts) {
+		pr_err("%s: Could not find wpcio gpio node\n", __func__);
+		pdata->gpio_sys_req = GPIO_PWR_SYSREQ;
+		pdata->gpio_soft_poweroff = GPIO_PWR_SOFTPOWEROFF;
+	} else {
+		gpio = of_get_named_gpio(dts, "sysreq-gpios", 0);
+		if (gpio_is_valid(gpio))
+			pdata->gpio_sys_req = gpio;
+		else
+			pdata->gpio_sys_req = GPIO_PWR_SYSREQ;
+		gpio = of_get_named_gpio(dts, "soft_poweroff-gpios", 0);
+		if (gpio_is_valid(gpio))
+			pdata->gpio_soft_poweroff = gpio;
+		else
+			pdata->gpio_soft_poweroff = GPIO_PWR_SOFTPOWEROFF;
+		of_node_put(dts);
+	}
+
         /* Setup gpio */
+		gpio = pdata->gpio_sys_req;
         err = gpio_request(gpio, "wpc_pwrbutton");
         if (err) {
                 pr_err("%s: Failed to gpio request GPIO_%d\n", __func__, gpio);
@@ -112,7 +135,7 @@ static int __init wpc_pwrbutton_init_hw(void)
         }
         gpio_direction_input(gpio);
 
-        gpio = GPIO_PWR_SOFTPOWEROFF;
+        gpio = pdata->gpio_soft_poweroff;
 
         err = gpio_request(gpio, "wpc_soft_reset");
         if (err) {
@@ -132,7 +155,7 @@ static int wpc_pwrbutton_probe(struct platform_device *pdev)
 	struct wpc_pwrbutton_platform_data *pdata = pdev->dev.platform_data;
 	int irq,err;
 //	int gpio = pdata->gpio_sys_req;
-	wpc_pwrbutton_init_hw();
+	wpc_pwrbutton_init_hw(pdata);
 	irq = gpio_to_irq(pdata->gpio_sys_req);
 	
 	dev_notice(&pdev->dev, "probe gpio-%d,irq-%d\n",pdata->gpio_sys_req, irq);

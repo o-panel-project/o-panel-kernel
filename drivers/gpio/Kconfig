@@ -536,6 +536,11 @@ config GPIO_ATC260X
           This option enables support for GPIOs found
           on Actions Semi ATC260X PMIC.
 
+config GPIO_WPCIO
+        tristate "WPCIO support"
+        help
+          This option enables support for WPC board GPIOs.
+
 comment "PCI GPIO expanders:"
 
 config GPIO_CS5535

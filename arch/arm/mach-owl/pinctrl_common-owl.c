@@ -622,7 +622,7 @@ static int pinmux_request_check_gpio(struct pinctrl_dev *pctldev, u32 pin)
 
 	if(desc->gpio_owner){
 		PINCTRL_ERR(KERN_ALERT "%s\n", __FUNCTION__);
-		PINCTRL_ERR(KERN_ALERT "CHECK PMX:%s has already been requested by %s",
+		PINCTRL_ERR(KERN_ALERT "CHECK PMX:%s has already been requested by %s\n",
 				desc->name, desc->gpio_owner);
 	}
 
@@ -636,7 +636,7 @@ static int gpio_request_check_pinmux(struct pinctrl_dev *pctldev, u32 pin)
 
 	if(desc->mux_owner){
 		PINCTRL_ERR(KERN_ALERT "%s\n", __FUNCTION__);
-		PINCTRL_ERR(KERN_ALERT "CHECK PMX:%s has already been requested by %s",
+		PINCTRL_ERR(KERN_ALERT "CHECK PMX:%s has already been requested by %s\n",
 				desc->name, desc->mux_owner);
 
 //		if(desc->mux_setting->func == OWL_MUX_LVDS){

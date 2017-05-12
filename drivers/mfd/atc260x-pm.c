@@ -31,6 +31,7 @@
 #include <mach/power.h>
 #include <linux/mfd/atc260x/atc260x.h>
 
+extern void wpcio_powerdown_withgpio(void);
 
 /* ATC2603A_PMU_SYS_CTL1 register bits */
 #define PMU_SYS_CTL1_EN_S1              (1 << 0)
@@ -768,6 +769,7 @@ static int _atc260x_pm_powerdown(uint deep_pwrdn, uint for_upgrade)
 	}
 
 	pr_alert("%s() : powerdown.......................\n", __func__);
+	wpcio_powerdown_withgpio();
 
 	ret = atc260x_reg_setbits(atc260x, reg_sysctl1, PMU_SYS_CTL1_EN_S1, 0);
 	while (ret == 0) { /* wait for powerdown if success. */
@@ -858,6 +860,7 @@ static int _atc2603c_9a_pm_do_reboot(struct atc260x_pm_dev *atc260x_pm)
 
 	owl_switch_jtag();
 	pr_alert("%s() : reboot.......................\n", __func__);
+	wpcio_powerdown_withgpio();
 
 	ret = atc260x_reg_setbits(atc260x, reg_sysctl0, (1U << 10), (1U << 10));
 	while (ret == 0) { /* wait for reboot if success. */

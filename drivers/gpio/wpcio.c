@@ -33,6 +33,8 @@
 #include <asm/uaccess.h>
 #include <linux/i2c/twl.h>
 #include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#include <linux/syscalls.h>
 
 #include "wpcio_pin.h"
 #include "wpcio.h"
@@ -73,6 +75,122 @@ struct _wpcio_data {
 	.channel = 0,
 };
 
+typedef struct _gpio_table {
+	int gpio;
+	char *property_name;	/* node "wpcio-gpio" of Device tree */
+	int flags;
+	int requested;
+} gpio_table_t;
+//static struct _gpio_table {
+//	int gpio;
+//	char *property_name;	/* node "wpcio-gpio" of Device tree */
+//	int flags;
+//	int requested;
+//} gpio_table[] = {
+static gpio_table_t gpio_table[] = {
+	{0, "dipswitch1-gpios", GPIOF_DIR_IN, 0},
+	{0, "dipswitch2-gpios", GPIOF_DIR_IN, 0},
+	{0, "dipswitch3-gpios", GPIOF_DIR_IN, 0},
+	{0, "dipswitch4-gpios", GPIOF_DIR_IN, 0},
+	{0, "leds_green-gpios", GPIOF_DIR_OUT, 0},
+	{0, "leds_red-gpios",   GPIOF_DIR_OUT, 0},
+	{0, "leds_orange-gpios",GPIOF_DIR_OUT, 0},
+	{0, "usb_memory_pwr-gpios", GPIOF_DIR_OUT, 0},
+	{0, "usb_felica_pwr-gpios", GPIOF_DIR_OUT, 0},
+	{0, "usb_memory_overcur-gpios", GPIOF_DIR_IN, 0},
+	{0, "battery_fast-gpios", GPIOF_DIR_IN, 0},
+	{0, "battery_full-gpios", GPIOF_DIR_IN, 0},
+	{0, "battery_fault-gpios",GPIOF_DIR_IN, 0},
+	{0, "sysen_adc_read-gpios", GPIOF_DIR_OUT, 0},
+	{0, "sysreq-gpios", GPIOF_DIR_IN, 1},			/* init on wpc_pwrbutton */
+	{0, "soft_poweroff-gpios", GPIOF_DIR_OUT, 1},	/* init on wpc_pwrbutton */
+	{0, "wifi_bt_power-gpios", GPIOF_DIR_OUT, 1},	/* init on wlan driver */
+	{0, "wifi_en-gpios", GPIOF_DIR_OUT, 1},			/* init on wlan driver */
+};
+
+static gpio_table_t user_gpio_table[] = {
+	{0, "backlight_en-gpios", GPIOF_DIR_OUT, 1},/* init on backlight driver */
+	{0, "lcd_vcc_en-gpios", GPIOF_DIR_OUT, 1},	/* init on dsi driver */
+	{0, "tp_pwd_rst-gpios", GPIOF_DIR_OUT, 1},	/* init on tp driver */
+	{0, "battery_charge-gpios", GPIOF_DIR_OUT, 0},
+};
+
+static int wpcio_get_value(char *property)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(gpio_table); i++) {
+		if (strcmp(property, gpio_table[i].property_name) == 0) {
+			if (gpio_is_valid(gpio_table[i].gpio)) {
+				return gpio_get_value(gpio_table[i].gpio);
+			}
+		}
+	}
+	for (i = 0; i < ARRAY_SIZE(user_gpio_table); i++) {
+		if (strcmp(property, user_gpio_table[i].property_name) == 0) {
+			if (gpio_is_valid(user_gpio_table[i].gpio)) {
+				return gpio_get_value(user_gpio_table[i].gpio);
+			}
+		}
+	}
+	return 0;
+}
+
+static void wpcio_set_value(char *property, int value)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(gpio_table); i++) {
+		if (strcmp(property, gpio_table[i].property_name) == 0) {
+			if (gpio_is_valid(gpio_table[i].gpio)) {
+				gpio_set_value_cansleep(gpio_table[i].gpio, value);
+				return;
+			}
+		}
+	}
+	for (i = 0; i < ARRAY_SIZE(user_gpio_table); i++) {
+		if (strcmp(property, user_gpio_table[i].property_name) == 0) {
+			if (gpio_is_valid(user_gpio_table[i].gpio)) {
+				gpio_set_value_cansleep(user_gpio_table[i].gpio, value);
+				return;
+			}
+		}
+	}
+}
+
+static int wpcio_get_gpio(char *property)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(gpio_table); i++) {
+		if (strcmp(property, gpio_table[i].property_name) == 0) {
+			if (gpio_is_valid(gpio_table[i].gpio)) {
+				return gpio_table[i].gpio;
+			}
+		}
+	}
+	for (i = 0; i < ARRAY_SIZE(user_gpio_table); i++) {
+		if (strcmp(property, user_gpio_table[i].property_name) == 0) {
+			if (gpio_is_valid(user_gpio_table[i].gpio)) {
+				return user_gpio_table[i].gpio;
+			}
+		}
+	}
+	return 0;
+}
+
+static char *wpcio_get_property(int gpio)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(gpio_table); i++) {
+		if (gpio == gpio_table[i].gpio) {
+			return gpio_table[i].property_name;
+		}
+	}
+	for (i = 0; i < ARRAY_SIZE(user_gpio_table); i++) {
+		if (gpio == user_gpio_table[i].gpio) {
+			return user_gpio_table[i].property_name;
+		}
+	}
+	return NULL;
+}
 
 // Colman start: 110412
 
@@ -99,13 +217,11 @@ static struct _user_gpio {
 	int requested;  // internal use
 } user_gpio[] = {
 //	{54, "GPIO_54", 1, 0, 0, 0 },   // output low - bat2 charger on/off
-	{22, "GPIO_22", 1, 0, 1, 1 },   // output low - BACKLIGHT_ENABLE_A22
-	{23, "GPIO_23", 1, 0, 1, 1 },   // output low - LCD_VCC_EN_A23
-	{32, "GPIO_32", 1, 0, 1, 1 },   // output low - TP_PWD_RST_B0
+	//{22, "GPIO_22", 1, 0, 1, 1 },   // output low - lcd power sequence
 //	{56, "GPIO_56", 0, 0, 0, 0 },   // Input pull low - Cradle status input
 //	{57, "GPIO_57", 0, 0, 0, 0 },   // input pull low - Bat2 detect input
-	{116, "GPIO_116", 1, 0, 0, 1 },   // output low - soft power off trigger,already initilized when board init.
-	{18, "GPIO_18", 1, 0, 0, 0 },   // output low - bat1 charger on/off
+	//{116, "GPIO_116", 1, 0, 0, 1 },   // output low - soft power off trigger,already initilized when board init.
+	//{18, "GPIO_18", 1, 0, 0, 0 },   // output low - bat1 charger on/off
 //	{148, "GPIO_148", 0, 0, 0, 0 }, // input pull low - no specified yet
 };
 
@@ -180,7 +296,8 @@ static void start_madc(struct _wpcio_data *wpcio_data) {
 			break;
 	}
 	//Enable GPIOB1(SYSEN), for ADC
-	gpio_set_value_cansleep(GPIO_PIN_ADCIN2_SEL, 1);  
+	//gpio_set_value_cansleep(GPIO_PIN_ADCIN2_SEL, 1);
+	wpcio_set_value("sysen_adc_read-gpios", 1);
 	/*
 	twl_i2c_write_u8(TWL4030_MODULE_MADC, val, TWL4030_MADC_SW1SELECT_LSB);
 	twl_i2c_write_u8(TWL4030_MODULE_MADC, 0x00, TWL4030_MADC_SW1SELECT_MSB);
@@ -285,29 +402,29 @@ static ssize_t wpc_io_write(struct file *file, const char __user *data, size_t c
 
 static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 {
-//	printk(MY_NAME":%s cmd=%d, arg=%ld\n",__FUNCTION__,cmd,arg);
+//	printk(MY_NAME":%s cmd=%x, arg=%ld\n",__FUNCTION__,cmd,arg);
 	switch(cmd) {
 		int data = 0;
 		case WPC_GET_DIPSW:
 			if (!arg) return -EFAULT;
-			data = gpio_get_value_cansleep(GPIO_PIN_DIPSW1)? WPC_DIPSW_1:0;
-			data |= gpio_get_value_cansleep(GPIO_PIN_DIPSW2)? WPC_DIPSW_2:0;
-			data |= gpio_get_value_cansleep(GPIO_PIN_DIPSW3)? WPC_DIPSW_3:0;
-			data |= gpio_get_value_cansleep(GPIO_PIN_DIPSW4)? WPC_DIPSW_4:0;
+			data  = wpcio_get_value("dipswitch1-gpios") ? WPC_DIPSW_1 : 0;
+			data |= wpcio_get_value("dipswitch2-gpios") ? WPC_DIPSW_2 : 0;
+			data |= wpcio_get_value("dipswitch3-gpios") ? WPC_DIPSW_3 : 0;
+			data |= wpcio_get_value("dipswitch4-gpios") ? WPC_DIPSW_4 : 0;
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_GET_LED:
 			if (!arg) return -EFAULT;
-			data = gpio_get_value_cansleep(GPIO_PIN_LED_GREEN)? WPC_LED_GREEN:0;
-			data |= gpio_get_value_cansleep(GPIO_PIN_LED_RED)? WPC_LED_RED:0;
-			data |= gpio_get_value_cansleep(GPIO_PIN_LED_ORANGE)? WPC_LED_ORANGE:0;
+			data  = wpcio_get_value("leds_green-gpios") ? 0 : WPC_LED_GREEN;
+			data |= wpcio_get_value("leds_red-gpios")   ? 0 : WPC_LED_RED;
+			data |= wpcio_get_value("leds_orange-gpios")? 0 : WPC_LED_ORANGE;
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_SET_LED:
 			data = arg;
-			gpio_set_value_cansleep(GPIO_PIN_LED_GREEN, (data & WPC_LED_GREEN)? 1:0);
-			gpio_set_value_cansleep(GPIO_PIN_LED_RED, (data & WPC_LED_RED)? 1:0);
-			gpio_set_value_cansleep(GPIO_PIN_LED_ORANGE, (data & WPC_LED_ORANGE)? 1:0);
+			wpcio_set_value("leds_green-gpios", (data & WPC_LED_GREEN) ? 0:1);
+			wpcio_set_value("leds_red-gpios",   (data & WPC_LED_RED)   ? 0:1);
+			wpcio_set_value("leds_orange-gpios",(data & WPC_LED_ORANGE)? 0:1);
 			return 0;
 
 		case WPC_RESET_USB_HUB:
@@ -330,15 +447,20 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			spin_lock(&wpcio_data.acc_lock);
 			if (arg) {
 				//gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 0);
-				gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 1);
+				//gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 1);
+				wpcio_set_value("usb_memory_pwr-gpios", 1);
+				IO_INFO("gpio usb_memory_pwr output to 1");
 				mdelay(200);
-				wpcio_data.usb2_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB2_OVERCUR_N)? 0:1;
+				//wpcio_data.usb2_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB2_OVERCUR_N)? 0:1;
+				wpcio_data.usb2_overcurrent = wpcio_get_value("usb_memory_overcur-gpios")? 0:1;
 				if (!wpcio_data.usb2_overcurrent) wpcio_data.usb2_on = 1;
 				else {
 					printk(MY_NAME": USB2 overcurrent, switched off\n");
 					// turn off usb2
 					//gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 1);
-					gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 0);
+					//gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 0);
+					wpcio_set_value("usb_memory_pwr-gpios", 0);
+					IO_INFO("gpio usb_memory_pwr output to 0");
 					wpcio_data.usb2_on = 0;
 					spin_lock(&wpcio_data.acc_lock);
 					return -EFAULT;
@@ -347,7 +469,9 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			else {
 				// turn off usb2
 				//gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 1);
-				gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 0);
+				//gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 0);
+				wpcio_set_value("usb_memory_pwr-gpios", 0);
+				IO_INFO("gpio usb_memory_pwr output to 0");
 				wpcio_data.usb2_on = 0;
 			}
 			spin_unlock(&wpcio_data.acc_lock);
@@ -358,12 +482,16 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			spin_lock(&wpcio_data.acc_lock);
 			if (arg) {
 			//	gpio_set_value_cansleep(GPIO_PIN_USB3_OE_N, 0);
-				gpio_set_value_cansleep(GPIO_PIN_USB3_POWER, 1);
+				//gpio_set_value_cansleep(GPIO_PIN_USB3_POWER, 1);
+				wpcio_set_value("usb_felica_pwr-gpios", 1);
+				IO_INFO("gpio usb_felica_pwr output to 1");
 			}
 			else {
 				// turn off usb2
 			//	gpio_set_value_cansleep(GPIO_PIN_USB3_OE_N, 1);
-				gpio_set_value_cansleep(GPIO_PIN_USB3_POWER, 0);
+				//gpio_set_value_cansleep(GPIO_PIN_USB3_POWER, 0);
+				wpcio_set_value("usb_felica_pwr-gpios", 0);
+				IO_INFO("gpio usb_felica_pwr output to 0");
 			}
 			spin_unlock(&wpcio_data.acc_lock);
 			return 0;
@@ -398,7 +526,8 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_GET_USB2_OVERCUR:
 			if (!arg) return -EFAULT;
 			if (wpcio_data.usb2_on)
-				wpcio_data.usb2_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB2_OVERCUR_N)? 0:1;
+				//wpcio_data.usb2_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB2_OVERCUR_N)? 0:1;
+				wpcio_data.usb2_overcurrent = wpcio_get_value("usb_memory_overcur-gpios")? 0:1;
 			else wpcio_data.usb2_overcurrent = -1;
 			return copy_to_user((void __user *)arg, &wpcio_data.usb2_overcurrent,
 					sizeof(wpcio_data.usb2_overcurrent))? -EFAULT : 0;
@@ -414,9 +543,12 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 
 		case WPC_GET_BAT1_CHARGING_STAT:
 			if (!arg) return -EFAULT;
-			data = gpio_get_value_cansleep(GPIO_PIN_BAT1_FASTCHG_N)? 0:WPC_CHARGING_FAST;
-			data |= gpio_get_value_cansleep(GPIO_PIN_BAT1_FULLCHG_N)? 0:WPC_CHARGING_FULL;
-			data |= gpio_get_value_cansleep(GPIO_PIN_BAT1_FAULT_N)? 0:WPC_CHARGING_FAULT;
+			//data = gpio_get_value_cansleep(GPIO_PIN_BAT1_FASTCHG_N)? 0:WPC_CHARGING_FAST;
+			//data |= gpio_get_value_cansleep(GPIO_PIN_BAT1_FULLCHG_N)? 0:WPC_CHARGING_FULL;
+			//data |= gpio_get_value_cansleep(GPIO_PIN_BAT1_FAULT_N)? 0:WPC_CHARGING_FAULT;
+			data  = wpcio_get_value("battery_fast-gpios") ?0:WPC_CHARGING_FAST;
+			data |= wpcio_get_value("battery_full-gpios") ?0:WPC_CHARGING_FULL;
+			data |= wpcio_get_value("battery_fault-gpios")?0:WPC_CHARGING_FAULT;
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_GET_BAT2_CHARGING_STAT:
@@ -427,6 +559,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_CONNECT_SDIO_WIFI:
+#if 0
 			if (arg) {
 				// Power on onboard wifi
 				// Make sure it is low, then high to trigger a card detect irq
@@ -442,6 +575,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				gpio_set_value_cansleep(GPIO_PIN_WIFI_RESET_N, 0);	// assert wifi reset
 				gpio_direction_output(GPIO_PIN_WIFI_PD_N, 0);		// assert wifi pd
 			}
+#endif
 			return 0;
 
 		case WPC_GET_BAT1_LEVEL:
@@ -457,6 +591,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 
 		case WPC_CONNECT_MMC1:
 			#if defined(GPIO_PIN_MMC1_ON_N)
+#if 0
 				spin_lock(&wpcio_data.acc_lock);
 				if (arg) {
 					gpio_set_value_cansleep(GPIO_PIN_MMC1_ON_N, 0);
@@ -466,6 +601,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 					gpio_set_value_cansleep(GPIO_PIN_MMC1_ON_N, 1);
 				}
 				spin_unlock(&wpcio_data.acc_lock);
+#endif
 				return 0;
 			#else
 				return -EINVAL;
@@ -475,10 +611,14 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			#if defined(GPIO_PIN_TP_POWER)
 				spin_lock(&wpcio_data.acc_lock);
 				if (arg) {
-					gpio_set_value_cansleep(GPIO_PIN_TP_POWER, 1);
+					//gpio_set_value_cansleep(GPIO_PIN_TP_POWER, 1);
+					wpcio_set_value("tp_pwd_rst-gpios", 1);
+					IO_INFO("gpio tp_pwd_rst output to 1");
 				}
 				else {
-					gpio_set_value_cansleep(GPIO_PIN_TP_POWER, 0);
+					//gpio_set_value_cansleep(GPIO_PIN_TP_POWER, 0);
+					wpcio_set_value("tp_pwd_rst-gpios", 0);
+					IO_INFO("gpio tp_pwd_rst output to 0");
 				}
 				spin_unlock(&wpcio_data.acc_lock);
 				return 0;
@@ -545,6 +685,14 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		}
 
 		case WPC_SET_GPIO_OUTPUT_HIGH: {
+			char *property = wpcio_get_property(arg);
+			if (!property) {
+				printk(MY_NAME": Set OUTPUT_HIGH gpio %ld not found\n", arg);
+				return -EINVAL;
+			}
+			wpcio_set_value(property, 1);
+			IO_INFO("gpio %s output to 1", property);
+#if 0
 			struct _user_gpio * gpio = get_gpio(arg);
 			if (!gpio) {
 				printk(MY_NAME": Set OUTPUT_HIGH gpio %ld not found\n", arg);
@@ -560,10 +708,19 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				gpio->level = 1;
 				gpio_set_value_cansleep(gpio->gpio, 1);
 			}
+#endif
 			return 0;
 		}
 
 		case WPC_SET_GPIO_OUTPUT_LOW: {
+			char *property = wpcio_get_property(arg);
+			if (!property) {
+				printk(MY_NAME": Set OUTPUT_LOW gpio %ld not found\n", arg);
+				return -EINVAL;
+			}
+			wpcio_set_value(property, 0);
+			IO_INFO("gpio %s output to 0", property);
+#if 0
 			struct _user_gpio * gpio = get_gpio(arg);
 			if (!gpio) {
 				printk(MY_NAME": Set OUTPUT_LOW gpio %ld not found\n", arg);
@@ -579,10 +736,19 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				gpio->level = 0;
 				gpio_set_value_cansleep(gpio->gpio, 0);
 			}
+#endif
 			return 0;
 		}
 
 		case WPC_GET_GPIO_LEVEL: {
+			char *property = wpcio_get_property(arg);
+			if (!property) {
+				printk(MY_NAME": Get LEVEL gpio %ld not found\n", arg);
+				return -EINVAL;
+			}
+			data = wpcio_get_value(property);
+			IO_INFO("gpio %s level is %d", property, data);
+#if 0
 			struct _user_gpio * gpio = get_gpio(arg);
 			if (!gpio) {
 				printk(MY_NAME": Get LEVEL gpio %ld not found\n", arg);
@@ -590,12 +756,13 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			}
 			// Whatever it is an input or output, we can always get its level
 			data = gpio_get_value_cansleep(gpio->gpio);
+#endif
 			return data;
 		}
 		// Colman end, 110412
 
 		default:
-			printk(MY_NAME": %d unknown command\n", cmd);
+			printk(MY_NAME": %x unknown command\n", cmd);
 			return -EINVAL;
 	}
 }
@@ -608,6 +775,30 @@ static struct file_operations wpc_io_fops = {
 	.release = wpc_io_release,
 };
 
+/*
+ * call from _atc260x_pm_powerdown()@atc260x-pm.c
+ *           _atc260c_9a_pm_do_reboot()@atc260x-pm.c
+ */
+void wpcio_powerdown_withgpio(void)
+{
+	pr_err("%s() start\n", __func__);
+
+	sys_sync();
+	sys_sync();
+	sys_sync();
+	sys_sync();
+	sys_sync();
+	mdelay(1000);
+
+	pr_err("%s() soft_poweroff-gpios=%d\n",
+			__func__, wpcio_get_gpio("soft_poweroff-gpios"));
+	wpcio_set_value("soft_poweroff-gpios", 1);
+
+	while (1) ;
+
+	return;
+}
+EXPORT_SYMBOL(wpcio_powerdown_withgpio);
 
 struct miscdevice wpc_io_miscdev = {
     .name       = "wpcio",
@@ -623,32 +814,32 @@ static struct _pin_table {
 	int level;
 	int requested;
 } pin_table[] = {
-	{ GPIO_PIN_DIPSW1, 			"DIPSW_1", 		0, 0, 0 },
-	{ GPIO_PIN_DIPSW2, 			"DIPSW_2", 		0, 0, 0 },
-	{ GPIO_PIN_DIPSW3, 			"DIPSW_3", 		0, 0, 0 },
-	{ GPIO_PIN_DIPSW4, 			"DIPSW_4", 		0, 0, 0 },
-	{ GPIO_PIN_LED_GREEN, 		"LED_GREEN", 	1, 0, 0 },
-	{ GPIO_PIN_LED_RED,			"LED_RED", 		1, 0, 0 },
-	{ GPIO_PIN_LED_ORANGE, 		"LED_ORANGE",	1, 0, 0 },
+	//{ GPIO_PIN_DIPSW1, 			"DIPSW_1", 		0, 0, 0 },
+	//{ GPIO_PIN_DIPSW2, 			"DIPSW_2", 		0, 0, 0 },
+	//{ GPIO_PIN_DIPSW3, 			"DIPSW_3", 		0, 0, 0 },
+	//{ GPIO_PIN_DIPSW4, 			"DIPSW_4", 		0, 0, 0 },
+	//{ GPIO_PIN_LED_GREEN, 		"LED_GREEN", 	1, 0, 0 },
+	//{ GPIO_PIN_LED_RED,			"LED_RED", 		1, 0, 0 },
+	//{ GPIO_PIN_LED_ORANGE, 		"LED_ORANGE",	1, 0, 0 },
 //	{ GPIO_PIN_USB_HUB_RESET, 	"HUB_RESET",	1, 1, 0 },
 //	{ GPIO_PIN_USB1_OE_N,		"USB1_OEN",		1, 1, 0 },
 //	{ GPIO_PIN_USB2_OE_N,		"USB2_OEN",		1, 1, 0 },
 //	{ GPIO_PIN_USB3_OE_N,		"USB3_OEN",		1, 1, 0 },
 //	{ GPIO_PIN_USB4_OE_N,		"USB4_OEN",		1, 1, 0 },
 //	{ GPIO_PIN_USB2_POWER,		"USB2_PWR", 	1, 0, 0 },
-	{ GPIO_PIN_USB3_POWER,		"USB3_PWR", 	1, 0, 0 },
+	//{ GPIO_PIN_USB3_POWER,		"USB3_PWR", 	1, 0, 0 },
 //	{ GPIO_PIN_USB4_POWER,		"USB4_PWR", 	1, 0, 0 },
-	{ GPIO_PIN_USB2_OVERCUR_N,	"USB2_OCN",		0, 0, 0 },
+	//{ GPIO_PIN_USB2_OVERCUR_N,	"USB2_OCN",		0, 0, 0 },
 //	{ GPIO_PIN_USB4_OVERCUR_N,	"USB4_OCN",		0, 0, 0 },
-	{ GPIO_PIN_BAT1_FAULT_N,	"BAT1_FAULTN",	0, 0, 0 },
-	{ GPIO_PIN_BAT1_FASTCHG_N,	"BAT1_FASTCN",	0, 0, 0 },
-	{ GPIO_PIN_BAT1_FULLCHG_N,	"BAT1_FULLCN",	0, 0, 0 },
+	//{ GPIO_PIN_BAT1_FAULT_N,	"BAT1_FAULTN",	0, 0, 0 },
+	//{ GPIO_PIN_BAT1_FASTCHG_N,	"BAT1_FASTCN",	0, 0, 0 },
+	//{ GPIO_PIN_BAT1_FULLCHG_N,	"BAT1_FULLCN",	0, 0, 0 },
 //	{ GPIO_PIN_BAT2_FAULT_N,	"BAT2_FAULTN",	0, 0, 0 },
 //	{ GPIO_PIN_BAT2_FASTCHG_N,	"BAT2_FASTCN",	0, 0, 0 },
 //	{ GPIO_PIN_BAT2_FULLCHG_N,	"BAT2_FULLCN",	0, 0, 0 },
 	//{ GPIO_PIN_WIFI_PD_N,		"WIFI_PDN",		1, 0, 1 },	// Leave mmc3 to request it.
 	//{ GPIO_PIN_WIFI_RESET_N,	"WIFI_RESETN",	1, 0, 1 },
-	{ GPIO_PIN_ADCIN2_SEL,		"ADCIN2_SEL",   1, 0, 0 },
+	//{ GPIO_PIN_ADCIN2_SEL,		"ADCIN2_SEL",   1, 0, 0 },
 //	#if defined(GPIO_PIN_MMC1_ON_N)
 //		{ GPIO_PIN_MMC1_ON_N, 	"MMC1_ONN",		1, 0, 0 },
 //	#endif
@@ -659,6 +850,10 @@ static struct _pin_table {
 
 static int __init wpc_io_init(void) {
 	int i;
+	struct device_node *dts;
+	u32 gpio;
+	enum of_gpio_flags flags;
+
 	IO_INFO("driver ver %s", IO_DRV_VERSION);
 
 	spin_lock_init(&wpcio_data.acc_lock);
@@ -668,6 +863,53 @@ static int __init wpc_io_init(void) {
         return -EIO;
 	}
 	IO_INFO("misc dev got minor %i", wpc_io_miscdev.minor);
+
+	dts = of_find_node_by_name(NULL, "wpcio-gpio");
+	if (!dts) {
+		pr_err("Could not find wpcio gpio node\n");
+		return -EIO;
+	}
+	for (i = 0; i < ARRAY_SIZE(gpio_table); i++) {
+		gpio = of_get_named_gpio_flags(
+				dts, gpio_table[i].property_name, 0, &flags);
+		if (gpio_is_valid(gpio)) {
+			gpio_table[i].gpio = gpio;
+			gpio_export(gpio, true);
+			if (gpio_table[i].requested == 1)
+				continue;
+			gpio_request(gpio, gpio_table[i].property_name);
+			if (gpio_table[i].flags & GPIOF_DIR_IN) {
+				gpio_direction_input(gpio);
+			} else {
+				/*
+				 * Output initial value from node "wpcio-gpio" of Device tree
+				 */
+				gpio_direction_output(gpio, flags & OF_GPIO_ACTIVE_LOW);
+			}
+			gpio_table[i].requested = 1;
+		}
+	}
+	for (i = 0; i < ARRAY_SIZE(user_gpio_table); i++) {
+		gpio = of_get_named_gpio_flags(
+				dts, user_gpio_table[i].property_name, 0, &flags);
+		if (gpio_is_valid(gpio)) {
+			user_gpio_table[i].gpio = gpio;
+			gpio_export(gpio, true);
+			if (user_gpio_table[i].requested == 1)
+				continue;
+			gpio_request(gpio, user_gpio_table[i].property_name);
+			if (user_gpio_table[i].flags & GPIOF_DIR_IN) {
+				gpio_direction_input(gpio);
+			} else {
+				/*
+				 * Output initial value from node "wpcio-gpio" of Device tree
+				 */
+				gpio_direction_output(gpio, flags & OF_GPIO_ACTIVE_LOW);
+			}
+			user_gpio_table[i].requested = 1;
+		}
+	}
+	of_node_put(dts);
 
 	// enable specific IO pin
 	for (i = 0; i < ARRAY_SIZE(pin_table); i++) {
