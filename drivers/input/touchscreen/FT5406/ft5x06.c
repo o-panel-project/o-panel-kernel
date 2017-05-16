@@ -374,6 +374,109 @@ int fts_ctpm_auto_clb(struct i2c_client *client)
 
 #define    FTS_PACKET_LENGTH        64//128
 
+int fts_i2c_write(struct i2c_client *client, char *writebuf, int writelen)
+{
+        int ret;
+
+        struct i2c_msg msgs[] = {
+                {
+                         .addr = client->addr,
+                         .flags = 0,
+                         .len = writelen,
+                         .buf = writebuf,
+                 },
+        };
+
+        if(writelen > 0)
+        {
+                ret = i2c_transfer(client->adapter, msgs, 1);
+                if (ret < 0)
+                        dev_err(&client->dev, "%s: i2c write error.\n", __func__);
+        }
+
+
+        return ret;
+}
+
+
+int fts_i2c_read(struct i2c_client *client, char *writebuf, int writelen, char *readbuf, int readlen)
+{
+        int ret;
+
+
+        if(readlen > 0)
+        {
+                if (writelen > 0) {
+                        struct i2c_msg msgs[] = {
+                                {
+                                         .addr = client->addr,
+                                         .flags = 0,
+                                         .len = writelen,
+                                         .buf = writebuf,
+                                 },
+                                {
+                                         .addr = client->addr,
+                                         .flags = I2C_M_RD,
+                                         .len = readlen,
+                                         .buf = readbuf,
+                                 },
+                        };
+                        ret = i2c_transfer(client->adapter, msgs, 2);
+                        if (ret < 0)
+                                dev_err(&client->dev, "%s: i2c read error.\n", __func__);
+                } else {
+                        struct i2c_msg msgs[] = {
+                                {
+                                         .addr = client->addr,
+                                         .flags = I2C_M_RD,
+                                         .len = readlen,
+                                         .buf = readbuf,
+                                 },
+                        };
+                        ret = i2c_transfer(client->adapter, msgs, 1);
+                        if (ret < 0)
+                                dev_err(&client->dev, "%s:i2c read error.\n", __func__);
+                }
+        }
+
+
+        return ret;
+}
+
+
+#define HIDTOI2C_DISABLE					0
+int hidi2c_to_stdi2c(struct i2c_client * client)
+{
+        u8 auc_i2c_write_buf[5] = {0};
+        int bRet = 0;
+        #if HIDTOI2C_DISABLE    
+                return 0;
+        #endif
+
+        auc_i2c_write_buf[0] = 0xeb;
+        auc_i2c_write_buf[1] = 0xaa;
+        auc_i2c_write_buf[2] = 0x09;
+        bRet =fts_i2c_write(client, auc_i2c_write_buf, 3);
+        msleep(10);
+        auc_i2c_write_buf[0] = auc_i2c_write_buf[1] = auc_i2c_write_buf[2] = 0;
+        fts_i2c_read(client, auc_i2c_write_buf, 0, auc_i2c_write_buf, 3);
+
+        if(0xeb==auc_i2c_write_buf[0] && 0xaa==auc_i2c_write_buf[1] && 0x08==auc_i2c_write_buf[2])
+        {
+                pr_info("hidi2c_to_stdi2c successful.\n");
+                bRet = 1;
+        }
+        else
+        {
+                pr_err("hidi2c_to_stdi2c error.\n");
+                bRet = 0;
+        }
+
+        return bRet;
+}
+
+
+
 
 E_UPGRADE_ERR_TYPE  fts_ctpm_fw_upgrade(struct i2c_client *client,FTS_BYTE* pbt_buf, FTS_DWRD dw_lenth)
 {
@@ -388,19 +491,35 @@ E_UPGRADE_ERR_TYPE  fts_ctpm_fw_upgrade(struct i2c_client *client,FTS_BYTE* pbt_
     FTS_BYTE  auc_i2c_write_buf[10];
     FTS_BYTE bt_ecc;
     int      i_ret;
+	
+        i_ret = hidi2c_to_stdi2c(client);
+        if(i_ret == 0)
+        {
+                printk("[FTS] hid change to i2c fail ! \n");
+        }
+
+
 
     /*********Step 1:Reset  CTPM *****/
     /*write 0xaa to register 0xfc*/
     ft5x0x_write_reg(client,0xfc,0xaa);
-    delay_qt_ms(50);
+    delay_qt_ms(2);
      /*write 0x55 to register 0xfc*/
     ft5x0x_write_reg(client,0xfc,0x55);
     printk("[FTS] Step 1: Reset CTPM test\n");
    
-    delay_qt_ms(30);   
+    delay_qt_ms(200);   
 
 
     /*********Step 2:Enter upgrade mode *****/
+    i_ret = hidi2c_to_stdi2c(client);
+
+    if(i_ret == 0)
+    {
+            printk("[FTS] hid change to i2c fail ! \n");
+    }
+    msleep(10);
+
     auc_i2c_write_buf[0] = 0x55;
     auc_i2c_write_buf[1] = 0xaa;
     do
@@ -414,7 +533,7 @@ E_UPGRADE_ERR_TYPE  fts_ctpm_fw_upgrade(struct i2c_client *client,FTS_BYTE* pbt_
     cmd_write(client,0x90,0x00,0x00,0x00,4);
     byte_read(client,reg_val,2);
     printk("config use upgrad id2=0x%x\n",UPGRADE_ID2);
-    if (reg_val[0] == 0x79 && reg_val[1] == UPGRADE_ID2)
+    if (reg_val[0] == 0x54 && reg_val[1] == 0x2c)
     {
         printk("[FTS] Step 3: CTPM ID,ID1 = 0x%x,ID2 = 0x%x\n",reg_val[0],reg_val[1]);
     }
@@ -427,102 +546,155 @@ E_UPGRADE_ERR_TYPE  fts_ctpm_fw_upgrade(struct i2c_client *client,FTS_BYTE* pbt_
         //i_is_new_protocol = 1;
     }
 
+
     cmd_write(client,0xcd,0x0,0x00,0x00,1);
     byte_read(client,reg_val,1);
     printk("[FTS] bootloader version = 0x%x\n", reg_val[0]);
 
-     /*********Step 4:erase app and panel paramenter area ********************/
-    cmd_write(client,0x61,0x00,0x00,0x00,1);  //erase app area
-    delay_qt_ms(1500); 
-    cmd_write(client,0x63,0x00,0x00,0x00,1);  //erase panel parameter area
-    delay_qt_ms(100);
-    printk("[FTS] Step 4: erase. \n");
+	/*Step 4:erase app and panel paramenter area*/
+	printk("Step 4:erase app and panel paramenter area\n");
+	auc_i2c_write_buf[0] = 0x61;
+	fts_i2c_write(client, auc_i2c_write_buf, 1);
+	msleep(1350);
+	for(i = 0;i < 15;i++)
+	{
+		auc_i2c_write_buf[0] = 0x6a;
+		reg_val[0] = reg_val[1] = 0x00;
+		fts_i2c_read(client, auc_i2c_write_buf, 1, reg_val, 2);
+		if(0xF0==reg_val[0] && 0xAA==reg_val[1])
+		{
+			break;
+		}
+		msleep(50);		
+	}
+	printk("[FTS][%s] erase app area reg_val[0] = %x reg_val[1] = %x \n", __func__, reg_val[0], reg_val[1]);
+	auc_i2c_write_buf[0] = 0xB0;
+	auc_i2c_write_buf[1] = (u8) ((dw_lenth >> 16) & 0xFF);
+	auc_i2c_write_buf[2] = (u8) ((dw_lenth >> 8) & 0xFF);
+	auc_i2c_write_buf[3] = (u8) (dw_lenth & 0xFF);
+	fts_i2c_write(client, auc_i2c_write_buf, 4);
+	/*********Step 5:write firmware(FW) to ctpm flash*********/
+	bt_ecc = 0;
+	printk("Step 5:write firmware(FW) to ctpm flash\n");
+	temp = 0;
+	packet_number = (dw_lenth) / FTS_PACKET_LENGTH;
+	packet_buf[0] = 0xBF;
+	packet_buf[1] = 0x00;
 
-    /*********Step 5:write firmware(FW) to ctpm flash*********/
-    bt_ecc = 0;
-    printk("[FTS] Step 5: start upgrade. \n");
-    dw_lenth = dw_lenth - 8;
-    packet_number = (dw_lenth) / FTS_PACKET_LENGTH;
-    packet_buf[0] = 0xbf;
-    packet_buf[1] = 0x00;
-    for (j=0;j<packet_number;j++)
-    {
-        temp = j * FTS_PACKET_LENGTH;
-        packet_buf[2] = (FTS_BYTE)(temp>>8);
-        packet_buf[3] = (FTS_BYTE)temp;
-        lenght = FTS_PACKET_LENGTH;
-        packet_buf[4] = (FTS_BYTE)(lenght>>8);
-        packet_buf[5] = (FTS_BYTE)lenght;
+	for (j = 0; j < packet_number; j++) 
+	{
+		temp = j * FTS_PACKET_LENGTH;
+		packet_buf[2] = (u8) (temp >> 8);
+		packet_buf[3] = (u8) temp;
+		lenght = FTS_PACKET_LENGTH;
+		packet_buf[4] = (u8) (lenght >> 8);
+		packet_buf[5] = (u8) lenght;
+		for (i = 0; i < FTS_PACKET_LENGTH; i++) 
+	{
+			packet_buf[6 + i] = pbt_buf[j * FTS_PACKET_LENGTH + i];
+			bt_ecc ^= packet_buf[6 + i];
+		}
+		fts_i2c_write(client, packet_buf, FTS_PACKET_LENGTH + 6);
+		for(i = 0;i < 30;i++)
+		{
+			auc_i2c_write_buf[0] = 0x6a;
+			reg_val[0] = reg_val[1] = 0x00;
+			fts_i2c_read(client, auc_i2c_write_buf, 1, reg_val, 2);
+			if ((j + 0x1000) == (((reg_val[0]) << 8) | reg_val[1]))
+			{
+				break;
+			}
+			printk("[FTS][%s] reg_val[0] = %x reg_val[1] = %x \n", __func__, reg_val[0], reg_val[1]);
+			msleep(1);			
+		}
+	}
+	if ((dw_lenth) % FTS_PACKET_LENGTH > 0) 
+	{
+		temp = packet_number * FTS_PACKET_LENGTH;
+		packet_buf[2] = (u8) (temp >> 8);
+		packet_buf[3] = (u8) temp;
+		temp = (dw_lenth) % FTS_PACKET_LENGTH;
+		packet_buf[4] = (u8) (temp >> 8);
+		packet_buf[5] = (u8) temp;
+		for (i = 0; i < temp; i++) 
+	{
+			packet_buf[6 + i] = pbt_buf[packet_number * FTS_PACKET_LENGTH + i];
+			bt_ecc ^= packet_buf[6 + i];
+		}	
+		fts_i2c_write(client, packet_buf, temp + 6);
+		for(i = 0;i < 30;i++)
+		{
+			auc_i2c_write_buf[0] = 0x6a;
+			reg_val[0] = reg_val[1] = 0x00;
+			fts_i2c_read(client, auc_i2c_write_buf, 1, reg_val, 2);
+			printk("[FTS][%s] reg_val[0] = %x reg_val[1] = %x \n", __func__, reg_val[0], reg_val[1]);
+			if ((j + 0x1000) == (((reg_val[0]) << 8) | reg_val[1]))
+			{
+				break;
+			}
+			printk("[FTS][%s] reg_val[0] = %x reg_val[1] = %x \n", __func__, reg_val[0], reg_val[1]);
+			msleep(1);
+			
+		}
+	}
 
-        for (i=0;i<FTS_PACKET_LENGTH;i++)
-        {
-            packet_buf[6+i] = pbt_buf[j*FTS_PACKET_LENGTH + i]; 
-            bt_ecc ^= packet_buf[6+i];
-        }
-        
-        byte_write(client,&packet_buf[0],FTS_PACKET_LENGTH + 6);
-        delay_qt_ms(FTS_PACKET_LENGTH/6 + 1);
-        if ((j * FTS_PACKET_LENGTH % 1024) == 0)
-        {
-              printk("[FTS] upgrade the 0x%x th byte.\n", ((unsigned int)j) * FTS_PACKET_LENGTH);
-        }
-    }
+	msleep(50);
+	
+	/*********Step 6: read out checksum***********************/
+	/*send the opration head */
+	printk("Step 6: read out checksum\n");
+	auc_i2c_write_buf[0] = 0x64;
+	fts_i2c_write(client, auc_i2c_write_buf, 1); 
+	msleep(300);
 
-    if ((dw_lenth) % FTS_PACKET_LENGTH > 0)
-    {
-        temp = packet_number * FTS_PACKET_LENGTH;
-        packet_buf[2] = (FTS_BYTE)(temp>>8);
-        packet_buf[3] = (FTS_BYTE)temp;
+	temp = 0;
+	auc_i2c_write_buf[0] = 0x65;
+	auc_i2c_write_buf[1] = (u8)(temp >> 16);
+	auc_i2c_write_buf[2] = (u8)(temp >> 8);
+	auc_i2c_write_buf[3] = (u8)(temp);
+	temp = dw_lenth;
+	auc_i2c_write_buf[4] = (u8)(temp >> 8);
+	auc_i2c_write_buf[5] = (u8)(temp);
+	i_ret = fts_i2c_write(client, auc_i2c_write_buf, 6); 
+	msleep(dw_lenth/256);
 
-        temp = (dw_lenth) % FTS_PACKET_LENGTH;
-        packet_buf[4] = (FTS_BYTE)(temp>>8);
-        packet_buf[5] = (FTS_BYTE)temp;
+	for(i = 0;i < 100;i++)
+	{
+		auc_i2c_write_buf[0] = 0x6a;
+		reg_val[0] = reg_val[1] = 0x00;
+		fts_i2c_read(client, auc_i2c_write_buf, 1, reg_val, 2);
+		dev_err(&client->dev, "[FTS]--reg_val[0]=%02x reg_val[0]=%02x\n", reg_val[0], reg_val[1]);
+		if (0xF0==reg_val[0] && 0x55==reg_val[1])
+		{
+			dev_err(&client->dev, "[FTS]--reg_val[0]=%02x reg_val[0]=%02x\n", reg_val[0], reg_val[1]);
+			break;
+		}
+		msleep(1);
+			
+	}
+	auc_i2c_write_buf[0] = 0x66;
+	fts_i2c_read(client, auc_i2c_write_buf, 1, reg_val, 1);
+	if (reg_val[0] != bt_ecc) 
+	{
+		dev_err(&client->dev, "[FTS]--ecc error! FW=%02x bt_ecc=%02x\n",
+					reg_val[0],
+					bt_ecc);
+				
+		return -EIO;
+	}
+	printk(KERN_WARNING "checksum %X %X \n",reg_val[0],bt_ecc);	
+	/*********Step 7: reset the new FW***********************/
+	printk("Step 7: reset the new FW\n");
+	auc_i2c_write_buf[0] = 0x07;
+	fts_i2c_write(client, auc_i2c_write_buf, 1);
+	msleep(200);	
+	i_ret = hidi2c_to_stdi2c(client);
+	if (i_ret == 0) 
+	{
+		printk("HidI2c change to StdI2c fail ! \n");
+	}
 
-        for (i=0;i<temp;i++)
-        {
-            packet_buf[6+i] = pbt_buf[ packet_number*FTS_PACKET_LENGTH + i]; 
-            bt_ecc ^= packet_buf[6+i];
-        }
-
-        byte_write(client,&packet_buf[0],temp+6);    
-        delay_qt_ms(20);
-    }
-
-    //send the last six byte
-    for (i = 0; i<6; i++)
-    {
-        temp = 0x6ffa + i;
-        packet_buf[2] = (FTS_BYTE)(temp>>8);
-        packet_buf[3] = (FTS_BYTE)temp;
-        temp =1;
-        packet_buf[4] = (FTS_BYTE)(temp>>8);
-        packet_buf[5] = (FTS_BYTE)temp;
-        packet_buf[6] = pbt_buf[ dw_lenth + i]; 
-        bt_ecc ^= packet_buf[6];
-
-        byte_write(client,&packet_buf[0],7);  
-        delay_qt_ms(20);
-    }
-
-    /*********Step 6: read out checksum***********************/
-    /*send the opration head*/
-    cmd_write(client,0xcc,0x00,0x00,0x00,1);
-    byte_read(client,reg_val,1);
-    printk("[FTS] Step 6:  ecc read 0x%x, new firmware 0x%x. \n", reg_val[0], bt_ecc);
-    if(reg_val[0] != bt_ecc)
-    {
-        printk("[FTS] ERR_ECC");
-
-        return ERR_ECC;
-    }
-
-    /*********Step 7: reset the new FW***********************/
-    cmd_write(client,0x07,0x00,0x00,0x00,1);
-
-    msleep(300);  //make sure CTP startup normally
-        printk("[FTS] Step over");
-
-    return ERR_OK;
+    	return ERR_OK;
 }
 
 
@@ -566,6 +738,10 @@ int fts_ctpm_auto_upg(struct i2c_client *client)
     uc_host_fm_ver = fts_ctpm_get_i_file_ver();
 	
     printk("[FTS]uc_tp_fm_ver=%x uc_host_fm_ver=%x\n",uc_tp_fm_ver,uc_host_fm_ver);
+    if(uc_host_fm_ver== uc_tp_fm_ver){
+    	printk("[FTS]version %d ,don't need upgrade \n",uc_tp_fm_ver);
+	return 0;
+    }
 #if 0
     if ( uc_tp_fm_ver == 0xa6  ||   //the firmware in touch panel maybe corrupted
          uc_tp_fm_ver < uc_host_fm_ver //the firmware in host flash is new, need upgrade
@@ -687,6 +863,7 @@ static ssize_t info_show(struct device *dev,
         FT5X06_WARNNING("Get firmware id failed");
         goto err;
     }
+/*
 
     ret = ft5x06_get_reg(ftdevice->client, OP_IDG_FT5201ID, &vender_id);
     if ( ret ) {
@@ -694,7 +871,8 @@ static ssize_t info_show(struct device *dev,
         goto err;
     }
 
-    ret = sprintf(buf, "firm-id: %d\t5201id: %d\n", (int)firm_version, (int)vender_id);
+*/
+    ret = sprintf(buf, "%d\n", (int)firm_version);
     return ret;
 
 err:    
@@ -888,7 +1066,7 @@ static ssize_t dump_regs_store(struct device *dev, struct device_attribute *attr
 static struct device_attribute ft5x06_attr[] = {
     __ATTR(mode, S_IRUSR | S_IWUSR, mode_show, mode_store),
     __ATTR(debug, S_IRUSR | S_IWUSR, debug_show, debug_store),
-    __ATTR(information, S_IRUSR | S_IWUSR, info_show, info_store),
+    __ATTR(firmware_version, S_IRUSR | S_IWUSR, info_show, info_store), //  /sys/devices/b0174000.i2c/i2c-1/1-0038/firmware_version
     __ATTR(scan_rate, S_IRUSR | S_IWUSR, rate_show, rate_store),
     __ATTR(reset, S_IRUSR | S_IWUSR, reset_show, reset_store),
     __ATTR(STR, S_IRUSR | S_IWUSR, str_show, str_store),
@@ -1651,6 +1829,8 @@ static ssize_t tp_resolution_show(struct device *dev,
     return sprintf(buf, "%dx%d\n",cfg_dts.xMax, cfg_dts.yMax);
 }
 
+
+
 static DEVICE_ATTR(tp_rotate, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_rotate_show, tp_rotate_store);
 static DEVICE_ATTR(tp_xrevert, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_xrevert_show, tp_xrevert_store);
 static DEVICE_ATTR(tp_yrevert, S_IWUSR|S_IWGRP|S_IRUSR|S_IRGRP,tp_yrevert_show, tp_yrevert_store);
@@ -1812,7 +1992,7 @@ static int ft5x06_probe(struct i2c_client *client,
 
 
     printk("ft5x06 probe v2.0 i file,FT5X0X_DOWNLOAD_FIRM=(%d)\n", FT5X0X_DOWNLOAD_FIRM);
-#if 0
+#if 1
 	#if (FT5X0X_DOWNLOAD_FIRM==1)
 printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 	fts_ctpm_auto_upg(client);
@@ -1838,6 +2018,13 @@ printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
             printk("create tp sysfs group error!");     
         }
 #endif
+
+    for ( i = 0; i < ARRAY_SIZE(ft5x06_attr); i++ ) {
+        err = device_create_file(&client->dev, &ft5x06_attr[i]);
+        if ( err ) {
+            FT5X06_WARNNING("Add device file failed");
+        }
+    }
     
     return 0;
 
