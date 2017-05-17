@@ -1,0 +1,4 @@
+ftsfwloader
+*.o
+*.i
+*.inc
