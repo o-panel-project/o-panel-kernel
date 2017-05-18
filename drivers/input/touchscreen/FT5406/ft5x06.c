@@ -862,6 +862,41 @@ int fts_ctpm_manual_upg(struct i2c_client *client, int force)
 
 	return 0;
 }
+
+/*
+ * WJ1307_5526_1280x800_V09_D01_20170502_app.i force load
+ */
+int fts_ctpm_v09_load(struct i2c_client *client)
+{
+	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
+	unsigned char uc_09_fm_ver;
+	unsigned char uc_tp_fm_ver;
+	int i_ret;
+
+	if (!ftdev->fw->data) {
+		kfree(ftdev->fw->data);
+		ftdev->fw->size = 0;
+		ftdev->fw->data = NULL;
+	}
+	uc_09_fm_ver = fts_ctpm_get_i_file_ver();
+
+	i_ret = fts_ctpm_fw_upgrade_with_i_file(client);
+	if (i_ret == 0) {
+		msleep(300);
+		uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
+		if (uc_09_fm_ver == uc_tp_fm_ver) {
+			dev_info(&client->dev, "fw V09 load successfully\n");
+			return 0;
+		}
+		dev_info(&client->dev, "fw V09 load failed? now version 0x%02x\n",
+				uc_tp_fm_ver);
+		i_ret = -1;
+	} else {
+		dev_err(&client->dev, "fw V09 load failed ret=%d\n", i_ret);
+	}
+
+	return i_ret;
+}
 #endif
 
 
@@ -874,10 +909,12 @@ int fts_ctpm_manual_upg(struct i2c_client *client, int force)
 enum {
 	FT5X06_IOCTL_FW_UPDATE = 0xA1,
 	FT5X06_IOCTL_FW_UPDATE_FORCE,
+	FT5X06_IOCTL_FW_DEFAULT_LOAD,
 	FT5X06_IOCTL_GET_VERSION,
 };
 #define IOCTL_FW_UPDATE     _IO('F', FT5X06_IOCTL_FW_UPDATE)
 #define IOCTL_FW_FUPDATE    _IO('F', FT5X06_IOCTL_FW_UPDATE_FORCE)
+#define IOCTL_FW_DEFAULT    _IO('F', FT5X06_IOCTL_FW_DEFAULT_LOAD)
 #define IOCTL_GET_VERSION   _IO('F', FT5X06_IOCTL_GET_VERSION)
 
 static int ft5x06_fs_open(struct inode *node, struct file *fp)
@@ -942,7 +979,8 @@ static ssize_t ft5x06_fs_write(
 		dev_err(&client->dev, "/dev/ft5x06 write, write error\n");
 		return -EFAULT;
 	}
-	dev_info(&client->dev, "/dev/ft5x06 write, %d bytes [%02d][%02d][%02d]\n",
+	dev_info(&client->dev,
+			"/dev/ft5x06 write, %d bytes [%02d][%02d][%02d]...\n",
 			cnt, ftdev->fw->data[0], ftdev->fw->data[1], ftdev->fw->data[2]);
 	return cnt;
 }
@@ -956,7 +994,7 @@ static long ft5x06_fs_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 
 	switch (cmd) {
 	case IOCTL_GET_VERSION:
-		dev_info(&client->dev, "/dev/ft5x06 get version cmd\n");
+		dev_info(&client->dev, "fw get version cmd\n");
 		ret = ft5x0x_read_fw_ver(client);
 		dev_info(&client->dev, "tp fw version 0x%ld\n", ret);
 		break;
@@ -966,6 +1004,10 @@ static long ft5x06_fs_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 	case IOCTL_FW_UPDATE:
 		dev_info(&client->dev, "fw %supdate cmd\n", force_upd ? "force " : "");
 		ret = fts_ctpm_manual_upg(client, force_upd);
+		break;
+	case IOCTL_FW_DEFAULT:
+		dev_info(&client->dev, "fw V09 force loader cmd\n");
+		ret = fts_ctpm_v09_load(client);
 		break;
 	default:
 		ret = -EINVAL;

@@ -22,16 +22,17 @@ const static char *SEPARATOR = ", \r\n";
 enum {
 	FT5X06_IOCTL_FW_UPDATE = 0xA1,
 	FT5X06_IOCTL_FW_UPDATE_FORCE,
+	FT5X06_IOCTL_FW_DEFAULT_LOAD,
 	FT5X06_IOCTL_GET_VERSION,
 };
 #define IOCTL_FW_UPDATE		_IO('F', FT5X06_IOCTL_FW_UPDATE)
 #define IOCTL_FW_FUPDATE	_IO('F', FT5X06_IOCTL_FW_UPDATE_FORCE)
+#define IOCTL_FW_DEFAULT	_IO('F', FT5X06_IOCTL_FW_DEFAULT_LOAD)
 #define IOCTL_GET_VERSION	_IO('F', FT5X06_IOCTL_GET_VERSION)
 
 static void show_version()
 {
 	int fd;
-	u_char ver[6];
 	int ret;
 
 	fd = open(ctrl_dev, O_RDWR);
@@ -50,10 +51,33 @@ static void show_version()
 	fprintf(stdout, "%02x\n", ret);
 }
 
+static void fw_default_load()
+{
+	int fd;
+	int ret;
+
+	fprintf(stdout, "ft5x06 firmware V09 force load\n");
+	fd = open(ctrl_dev, O_RDWR);
+	if (fd < 0) {
+		perror("open dev");
+		fprintf(stderr, "%s open failed, ctp_ft5x06.ko loaded?\n", ctrl_dev);
+		return;
+	}
+	ret = ioctl(fd, IOCTL_FW_DEFAULT);
+	if (ret < 0) {
+		perror("ioctl fw default load");
+		close(fd);
+		return;
+	}
+	ret = ioctl(fd, IOCTL_GET_VERSION);
+	close(fd);
+	fprintf(stdout, "ft5x06 firmware V09(%02x) force load done\n", ret);
+}
+
 static void usage(const char *pname)
 {
 	fprintf(stderr,
-		"Usage: %s --input=<app.i file> [--force] [--help] [--version]\n\n",
+		"Usage: %s --input=<app.i file> [--default] [--force] [--help] [--version]\n\n",
 		pname);
 }
 
@@ -71,6 +95,7 @@ int main(int argc, char *argv[])
 	const char *firmware = NULL;
 	char *msg;
 	int getver = 0;
+	int default_load = 0;
 	char *p;
 	long lch;
 
@@ -79,13 +104,14 @@ int main(int argc, char *argv[])
 		{ "input", required_argument, NULL, 'i' },
 		{ "version", no_argument, NULL, 'v' },
 		{ "help", no_argument, NULL, 'h' },
+		{ "default", no_argument, NULL, 'd' },
 		{}
 	};
 
 	for (;;) {
 		int option;
 
-		option = getopt_long(argc, argv, "fhi:qvr", options, NULL);
+		option = getopt_long(argc, argv, "fhi:vd", options, NULL);
 		if (option == -1)
 			break;
 
@@ -98,6 +124,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'v':
 			getver = 1;
+			break;
+		case 'd':
+			default_load = 1;
 			break;
 		case 'h':
 		default:
@@ -112,6 +141,12 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
+	/* fw default(V09) load */
+	if (default_load) {
+		fw_default_load();
+		return 0;
+	}
+
 	if (!firmware) {
 		fprintf(stderr, "Need app.i file\n");
 		usage(argv[0]);
@@ -121,6 +156,8 @@ int main(int argc, char *argv[])
 	/*
 	 * app.i firmware file open & read
 	 */
+	fprintf(stdout, "ft5x06 firmware %supdate for %s\n",
+		   force ? "force " : "", firmware);
 	fw = open(firmware, O_RDONLY);
 	if (fw < 0) {
 		perror("open fw");
@@ -132,7 +169,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 	file_size = st.st_size;
-	printf("file size %ld bytes\n", file_size);
+	fprintf(stdout, "file size %ld bytes\n", file_size);
 	file_data = (u_char *)malloc(file_size);
 	if (!file_data) {
 		perror("out of memory");
