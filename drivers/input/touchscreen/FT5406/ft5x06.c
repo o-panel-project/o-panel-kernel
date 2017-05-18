@@ -20,6 +20,9 @@
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
+#include <linux/cdev.h>
+#include <linux/firmware.h>
+#include <asm/uaccess.h>
 #include "ft5x06_reg.h"
 #include "ft5x06.h"
 
@@ -123,6 +126,11 @@ struct ft5x06_device {
 #endif
     int irq;
     unsigned long time_discard;
+	/* for fw loader */
+	struct class *cdev_class;
+	struct cdev ft5x06_cdev;
+	dev_t ft5x06_dev;
+	struct firmware *fw;
 };
 
 int debug_switch = 0;
@@ -356,10 +364,13 @@ int fts_ctpm_auto_clb(struct i2c_client *client)
             break;
         }
         delay_qt_ms(200);
-        printk("[FTS] waiting calibration %d\n",i);
+        //printk("[FTS] waiting calibration %d\n",i);
         
     }
-    printk("[FTS] calibration OK.\n");
+    if (i >= 100)
+        printk("[FTS] calibration OK?\n");
+    else
+        printk("[FTS] calibration OK.(%d)\n", i);
     
     msleep(300);
     ft5x0x_write_reg(client,0, 0x40);  //goto factory mode
@@ -376,7 +387,7 @@ int fts_ctpm_auto_clb(struct i2c_client *client)
 
 int fts_i2c_write(struct i2c_client *client, char *writebuf, int writelen)
 {
-        int ret;
+        int ret = 0;
 
         struct i2c_msg msgs[] = {
                 {
@@ -401,7 +412,7 @@ int fts_i2c_write(struct i2c_client *client, char *writebuf, int writelen)
 
 int fts_i2c_read(struct i2c_client *client, char *writebuf, int writelen, char *readbuf, int readlen)
 {
-        int ret;
+        int ret = 0;
 
 
         if(readlen > 0)
@@ -768,13 +779,300 @@ int fts_ctpm_auto_upg(struct i2c_client *client)
     return 0;
 }
 
+int fts_ctpm_fw_upgrade_with_fwfile(struct i2c_client *client)
+{
+	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
+	FTS_BYTE*     pbt_buf = FTS_NULL;
+	int i_ret;
+
+	//=========FW upgrade========================*/
+	pbt_buf = (FTS_BYTE *)ftdev->fw->data;
+#if 0 /* for debug */
+	for (i_ret = 0; i_ret < ftdev->fw->size; i_ret++) {
+		if (pbt_buf[i_ret] == CTPM_FW[i_ret])
+			continue;
+		dev_info(&client->dev, "fw data diff %d [%02x]-[%02x]\n",
+				i_ret, pbt_buf[i_ret], CTPM_FW[i_ret]);
+		break;
+	}
+	if (i_ret == ftdev->fw->size)
+		dev_info(&client->dev, "fw data compare ok.\n");
+#endif
+	/*call the upgrade function*/
+	i_ret =  fts_ctpm_fw_upgrade(client, pbt_buf, ftdev->fw->size);
+	if (i_ret != 0) {
+		dev_err(&client->dev, "fw upgrade failed (%d)\n", i_ret);
+		//error handling ...
+		//TBD
+	} else {
+		dev_info(&client->dev, "fw upgrade successfully\n");
+		fts_ctpm_auto_clb(client);  //start auto CLB
+		fts_ctpm_auto_clb(client);  //start auto CLB
+	}
+
+	return i_ret;
+}
+
+unsigned char fts_ctpm_get_fwfile_ver(struct i2c_client *client)
+{
+	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
+	unsigned int ui_ver_pos;
+
+	if (ftdev->fw->data && ftdev->fw->size >= 2) {
+		ui_ver_pos = ftdev->fw->size - 2;
+		return ftdev->fw->data[ui_ver_pos];
+	}
+	//TBD, error handling?
+	return 0xff; //default value
+}
+
+int fts_ctpm_manual_upg(struct i2c_client *client, int force)
+{
+	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
+	unsigned char uc_host_fm_ver;
+	unsigned char uc_tp_fm_ver;
+	int           i_ret;
+
+	if (!ftdev->fw->data) {
+		dev_err(&client->dev, "fw data not loaded\n");
+		return 0;
+	}
+	uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
+	uc_host_fm_ver = fts_ctpm_get_fwfile_ver(client);
+	dev_info(&client->dev,
+			"chip fw version=0x%02x, upgrade fw version=0x%02x\n",
+			uc_tp_fm_ver, uc_host_fm_ver);
+	if ((uc_host_fm_ver == uc_tp_fm_ver) && (force == 0)) {
+		dev_info(&client->dev,
+				"fw version=%x, don't need upgrade\n", uc_tp_fm_ver);
+		return 0;
+	}
+
+	msleep(100);
+	i_ret = fts_ctpm_fw_upgrade_with_fwfile(client);
+	if (i_ret == 0) {
+		msleep(300);
+		uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
+		//uc_host_fm_ver = fts_ctpm_get_fwfile_ver(client);
+		dev_info(&client->dev, "fw upgrade to new version 0x%02x\n",
+				uc_tp_fm_ver);
+	} else {
+       dev_err(&client->dev, "fw upgrade failed ret=%d\n", i_ret);
+	}
+
+	return 0;
+}
+
+/*
+ * WJ1307_5526_1280x800_V09_D01_20170502_app.i force load
+ */
+int fts_ctpm_v09_load(struct i2c_client *client)
+{
+	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
+	unsigned char uc_09_fm_ver;
+	unsigned char uc_tp_fm_ver;
+	int i_ret;
+
+	if (!ftdev->fw->data) {
+		kfree(ftdev->fw->data);
+		ftdev->fw->size = 0;
+		ftdev->fw->data = NULL;
+	}
+	uc_09_fm_ver = fts_ctpm_get_i_file_ver();
+
+	i_ret = fts_ctpm_fw_upgrade_with_i_file(client);
+	if (i_ret == 0) {
+		msleep(300);
+		uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
+		if (uc_09_fm_ver == uc_tp_fm_ver) {
+			dev_info(&client->dev, "fw V09 load successfully\n");
+			return 0;
+		}
+		dev_info(&client->dev, "fw V09 load failed? now version 0x%02x\n",
+				uc_tp_fm_ver);
+		i_ret = -1;
+	} else {
+		dev_err(&client->dev, "fw V09 load failed ret=%d\n", i_ret);
+	}
+
+	return i_ret;
+}
 #endif
 
 
 
 /**/
 
+/*
+ * /dev/ft5x06 firmware loader ioctl
+ */
+enum {
+	FT5X06_IOCTL_FW_UPDATE = 0xA1,
+	FT5X06_IOCTL_FW_UPDATE_FORCE,
+	FT5X06_IOCTL_FW_DEFAULT_LOAD,
+	FT5X06_IOCTL_GET_VERSION,
+};
+#define IOCTL_FW_UPDATE     _IO('F', FT5X06_IOCTL_FW_UPDATE)
+#define IOCTL_FW_FUPDATE    _IO('F', FT5X06_IOCTL_FW_UPDATE_FORCE)
+#define IOCTL_FW_DEFAULT    _IO('F', FT5X06_IOCTL_FW_DEFAULT_LOAD)
+#define IOCTL_GET_VERSION   _IO('F', FT5X06_IOCTL_GET_VERSION)
 
+static int ft5x06_fs_open(struct inode *node, struct file *fp)
+{
+	struct ft5x06_device *ftdev;
+	struct i2c_client *client;
+
+	ftdev = container_of(node->i_cdev, struct ft5x06_device, ft5x06_cdev);
+	client = ftdev->client;
+
+	fp->private_data = ftdev;
+
+	dev_info(&client->dev, "/dev/ft5x06 opened\n");
+	return 0;
+}
+
+static int ft5x06_fs_release(struct inode *node, struct file *fp)
+{
+	struct ft5x06_device *ftdev = fp->private_data;
+	struct i2c_client *client = ftdev->client;
+
+	if (ftdev->fw->data) {
+		kfree(ftdev->fw->data);
+		ftdev->fw->size = 0;
+		ftdev->fw->data = NULL;
+	}
+	dev_info(&client->dev, "/dev/ft5x06 closed\n");
+	return 0;
+}
+
+static ssize_t ft5x06_fs_read(
+		struct file *fp, char *rbuf, size_t cnt, loff_t *fpos)
+{
+	struct ft5x06_device *ftdev = fp->private_data;
+	struct i2c_client *client = ftdev->client;
+
+	dev_info(&client->dev, "/dev/ft5x06 read, nothing to do\n");
+	return cnt;
+}
+
+static ssize_t ft5x06_fs_write(
+		struct file *fp, const char __user *wbuf, size_t cnt, loff_t *fpos)
+{
+	struct ft5x06_device *ftdev = fp->private_data;
+	struct i2c_client *client = ftdev->client;
+
+	if (cnt <= 0) {
+		dev_err(&client->dev, "/dev/ft5x06 write, count error\n");
+		return -EINVAL;
+	}
+	ftdev->fw->size = cnt;
+	ftdev->fw->data = kmalloc(cnt, GFP_KERNEL);
+	if (!ftdev->fw->data) {
+		ftdev->fw->size = 0;
+		dev_err(&client->dev, "/dev/ft5x06 write, buffer error\n");
+		return -ENOMEM;
+	}
+	if (copy_from_user((void *)ftdev->fw->data, wbuf, cnt)) {
+		kfree(ftdev->fw->data);
+		ftdev->fw->size = 0;
+		ftdev->fw->data = NULL;
+		dev_err(&client->dev, "/dev/ft5x06 write, write error\n");
+		return -EFAULT;
+	}
+	dev_info(&client->dev,
+			"/dev/ft5x06 write, %d bytes [%02d][%02d][%02d]...\n",
+			cnt, ftdev->fw->data[0], ftdev->fw->data[1], ftdev->fw->data[2]);
+	return cnt;
+}
+
+static long ft5x06_fs_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
+{
+	struct ft5x06_device *ftdev = fp->private_data;
+	struct i2c_client *client = ftdev->client;
+	int force_upd = 0;
+	long ret = 0;
+
+	switch (cmd) {
+	case IOCTL_GET_VERSION:
+		dev_info(&client->dev, "fw get version cmd\n");
+		ret = ft5x0x_read_fw_ver(client);
+		dev_info(&client->dev, "tp fw version 0x%ld\n", ret);
+		break;
+	case IOCTL_FW_FUPDATE:
+		force_upd = 1;
+		/* fall through */
+	case IOCTL_FW_UPDATE:
+		dev_info(&client->dev, "fw %supdate cmd\n", force_upd ? "force " : "");
+		ret = fts_ctpm_manual_upg(client, force_upd);
+		break;
+	case IOCTL_FW_DEFAULT:
+		dev_info(&client->dev, "fw V09 force loader cmd\n");
+		ret = fts_ctpm_v09_load(client);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static struct file_operations ft5x06_fops = {
+	.open           = ft5x06_fs_open,
+	.release        = ft5x06_fs_release,
+	.read           = ft5x06_fs_read,
+	.write          = ft5x06_fs_write,
+	.unlocked_ioctl = ft5x06_fs_ioctl,
+};
+
+static int ft5x06_chardev_setup(struct ft5x06_device *ftdev)
+{
+	struct i2c_client *client = ftdev->client;
+
+	/* file i/o interface */
+	if (alloc_chrdev_region(&ftdev->ft5x06_dev, 0, 1, FT5X06_NAME)) {
+		dev_err(&client->dev, "failed to allocated device region\n");
+		return -ENOMEM;
+	}
+	cdev_init(&ftdev->ft5x06_cdev, &ft5x06_fops);
+	ftdev->ft5x06_cdev.owner = THIS_MODULE;
+	if (cdev_add(&ftdev->ft5x06_cdev, ftdev->ft5x06_dev, 1)) {
+		dev_err(&client->dev, "failed to add char device\n");
+		return -EIO;
+	}
+
+	ftdev->cdev_class = class_create(THIS_MODULE, FT5X06_NAME);
+	device_create(
+			ftdev->cdev_class, NULL, ftdev->ft5x06_dev, NULL, FT5X06_NAME);
+
+	if (!ftdev->fw) {
+		ftdev->fw = kmalloc(sizeof(struct firmware), GFP_KERNEL);
+		if (!ftdev->fw) {
+			dev_err(&client->dev, "failed to alloc fw\n");
+			return -ENOMEM;
+		}
+	}
+	ftdev->fw->size = 0;
+	ftdev->fw->data = NULL;
+	dev_info(&client->dev, "%s done(app_i=%d)\n", __func__, sizeof(CTPM_FW));
+
+	return 0;
+}
+
+static void ft5x06_chardev_remove(struct ft5x06_device *ftdev)
+{
+	struct i2c_client *client = ftdev->client;
+
+	device_destroy(ftdev->cdev_class, ftdev->ft5x06_dev);
+	class_destroy(ftdev->cdev_class);
+	cdev_del(&ftdev->ft5x06_cdev);
+	unregister_chrdev_region(ftdev->ft5x06_dev, 1);
+	if (ftdev->fw) {
+		kfree(ftdev->fw);
+		ftdev->fw = 0;
+	}
+	dev_info(&client->dev, "%s done\n", __func__);
+}
 
 /*
   *  device attributes. Commnication between kernel & user space
@@ -855,7 +1153,7 @@ static ssize_t info_show(struct device *dev,
         struct device_attribute *attr,char *buf)
 {
     struct ft5x06_device *ftdevice = (struct ft5x06_device *)dev_get_drvdata(dev);
-    u8 firm_version, vender_id;
+    u8 firm_version;//, vender_id;
     int ret;
 
     ret = ft5x06_get_reg(ftdevice->client, OP_IDG_FIRMID, &firm_version);
@@ -1991,8 +2289,8 @@ static int ft5x06_probe(struct i2c_client *client,
 #endif
 
 
+#if 0
     printk("ft5x06 probe v2.0 i file,FT5X0X_DOWNLOAD_FIRM=(%d)\n", FT5X0X_DOWNLOAD_FIRM);
-#if 1
 	#if (FT5X0X_DOWNLOAD_FIRM==1)
 printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 	fts_ctpm_auto_upg(client);
@@ -2025,7 +2323,9 @@ printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
             FT5X06_WARNNING("Add device file failed");
         }
     }
-    
+
+	ft5x06_chardev_setup(ftdev);
+
     return 0;
 
 irq_request_failed:
@@ -2059,6 +2359,7 @@ static int ft5x06_remove(struct i2c_client *client)
         input_unregister_device(ftdev->input_dev);
         destroy_workqueue(ftdev->workqueue);
         input_free_device(ftdev->input_dev);
+        ft5x06_chardev_remove(ftdev);
 #ifdef CONFIG_HAS_EARLYSUSPEND
 		unregister_early_suspend(&ftdev->es);
 #endif
