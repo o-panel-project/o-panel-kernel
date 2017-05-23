@@ -415,16 +415,16 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 
 		case WPC_GET_LED:
 			if (!arg) return -EFAULT;
-			data  = wpcio_get_value("leds_green-gpios") ? 0 : WPC_LED_GREEN;
-			data |= wpcio_get_value("leds_red-gpios")   ? 0 : WPC_LED_RED;
-			data |= wpcio_get_value("leds_orange-gpios")? 0 : WPC_LED_ORANGE;
+			data  = wpcio_get_value("leds_green-gpios") ? WPC_LED_GREEN : 0;
+			data |= wpcio_get_value("leds_red-gpios")   ? WPC_LED_RED : 0;
+			data |= wpcio_get_value("leds_orange-gpios")? WPC_LED_ORANGE : 0;
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_SET_LED:
 			data = arg;
-			wpcio_set_value("leds_green-gpios", (data & WPC_LED_GREEN) ? 0:1);
-			wpcio_set_value("leds_red-gpios",   (data & WPC_LED_RED)   ? 0:1);
-			wpcio_set_value("leds_orange-gpios",(data & WPC_LED_ORANGE)? 0:1);
+			wpcio_set_value("leds_green-gpios", (data & WPC_LED_GREEN) ? 1:0);
+			wpcio_set_value("leds_red-gpios",   (data & WPC_LED_RED)   ? 1:0);
+			wpcio_set_value("leds_orange-gpios",(data & WPC_LED_ORANGE)? 1:0);
 			return 0;
 
 		case WPC_RESET_USB_HUB:
