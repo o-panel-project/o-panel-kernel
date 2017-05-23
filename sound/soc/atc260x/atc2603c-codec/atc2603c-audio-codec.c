@@ -639,6 +639,14 @@ const struct snd_kcontrol_new atc2603c_snd_controls[] = {
 		0,
 		NULL),
 		
+	SOC_DOUBLE_TLV("DAC1 Digital Fine",
+		DAC_VOLUMECTL0,
+		DAC_VOLUMECTL0_DACFL_VOLUME_SFT,
+		DAC_VOLUMECTL0_DACFR_VOLUME_SFT,
+		0xFF,
+		0,
+		NULL),
+
 	SOC_SINGLE("DAC PA Switch",
 		DAC_ANALOG3,
 		DAC_ANALOG3_PAEN_FR_FL_SFT,
