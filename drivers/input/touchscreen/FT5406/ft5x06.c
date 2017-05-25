@@ -1140,6 +1140,7 @@ static ssize_t debug_store(struct device *dev,
     switch(tmp) {
         case 0:
         case 1:
+        case 2:
             debug_switch = tmp;
             break;
         default:
@@ -1606,7 +1607,7 @@ out:
 #define	POINTS	(ftdev->ftdata->points)
 static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 {
-	int err = 0, finger, event, found, moved;
+	int need_report = 0, finger, event, found, moved, pos_moved;
     enum FT_EVENT_TYPE  type;
 
     if( !ftdev || !ftdev->ftdata )
@@ -1635,12 +1636,15 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 			}
 		}
 		if (found != -1) {
-			moved = 0;
+			moved = pos_moved = 0;
 			if (TOUCHES[finger].x != POINTS[found].x ||
 				TOUCHES[finger].y != POINTS[found].y ||
 				TOUCHES[finger].weight != POINTS[found].weight ||
 				TOUCHES[finger].area != POINTS[found].area)
 				moved = 1;
+			if (TOUCHES[finger].x != POINTS[found].x ||
+				TOUCHES[finger].y != POINTS[found].y)
+				pos_moved = 1;
 			/* finger.id touch event found */
 			type = POINTS[found].type;
 			TOUCHES[finger].type = type;
@@ -1655,22 +1659,28 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 				/* touch down or move event */
 				if (TOUCHES[finger].state == TOUCH_NOUSE) {
 					TOUCHES[finger].state = TOUCH_DOWN;
-					FT5X06_DEBUG("[%d] down (%d,%d)(%d,%d,%d,%d)",
+					FT5X06_DEBUG("(%d)[%d] down (%d,%d)(%d,%d,%d,%d)", type,
 						finger, TOUCHES[finger].x, TOUCHES[finger].y,
 						TOUCHES[finger].weight, TOUCHES[finger].area,
 						TOUCHES[finger].direction, TOUCHES[finger].speed);
+					need_report = 1;
 				} else {
 					TOUCHES[finger].state = TOUCH_MOVE;
-					if (moved)
-						FT5X06_DEBUG("[%d] move (%d,%d)(%d,%d,%d,%d)",
+					if (moved) {
+						FT5X06_DEBUG("(%d)[%d] move (%d,%d)(%d,%d,%d,%d)", type,
 							finger, TOUCHES[finger].x, TOUCHES[finger].y,
 							TOUCHES[finger].weight, TOUCHES[finger].area,
 							TOUCHES[finger].direction, TOUCHES[finger].speed);
+						need_report = 1;
+					}
+					if (pos_moved == 0)
+						need_report = 0;
 				}
 			} else {
 				/* touch up event */
 				TOUCHES[finger].state = TOUCH_UP;
-				FT5X06_DEBUG("[%d] up", finger);
+				FT5X06_DEBUG("(%d)[%d] up", type, finger);
+				need_report = 1;
 			}
 		} else {
 			/* finger.id touch event not found */
@@ -1679,7 +1689,8 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 				(TOUCHES[finger].state == TOUCH_MOVE)) {
 				TOUCHES[finger].weight = 0;	/* PRESSURE = 0 */
 				TOUCHES[finger].state = TOUCH_UP;
-				FT5X06_DEBUG("[%d] up (no event)", finger);
+				FT5X06_DEBUG("( )[%d] up (no event)", finger);
+				need_report = 1;
 			}
 		}
 	}
@@ -1694,7 +1705,7 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 	}
 #endif
 
-	return err;
+	return need_report;
 }
 #undef TOUCHES
 
@@ -1734,6 +1745,9 @@ static int ft5x06_report_b(struct ft5x06_device *ftdev)
 				TOUCHES[finger].area, /* width major */
 				TOUCHES[finger].weight /* pressure*/
 				);
+		FT5X06_DEBUGV("[%d] report (%d,%d)(%d,%d)",
+			finger, TOUCHES[finger].x, TOUCHES[finger].y,
+			TOUCHES[finger].weight, TOUCHES[finger].area);
 	}
 	input_sync(input);
 	return 0;
@@ -1846,8 +1860,8 @@ static void ft5x06_work(struct work_struct *work)
     //enable_irq(ftdevice->irq);/* binzhang(2012/9/13):  */
 //    printk("ret is %d \n",ret);
 	if (ret == 0) {
-         ft5x06_touch_event(ftdevice);
-         ft5x06_report_b(ftdevice);
+         if (ft5x06_touch_event(ftdevice))
+             ft5x06_report_b(ftdevice);
 	}
 	
 }
