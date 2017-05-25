@@ -118,10 +118,15 @@ extern int debug_switch;
 
 #ifdef ft5x06_debug
 #define FT5X06_DEBUG(fmt, args...) \
-    if ( debug_switch)  \
+    if (debug_switch == 1)  \
         printk("[FT5X06-INFO]"fmt"\n", ##args)
+#define FT5X06_DEBUGV(fmt, args...) \
+    if (debug_switch > 1)  \
+        printk("[FT5X06-DBUG]"fmt"\n", ##args)
 #else
 #define FT5X06_DEBUG(fmt, args...) \
+    do {} while(0)
+#define FT5X06_DEBUGV(fmt, args...) \
     do {} while(0)
 #endif
 
