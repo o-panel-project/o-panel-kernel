@@ -697,7 +697,6 @@ static int atc2603c_playback_set_controls(struct snd_soc_codec *codec)
     snd_soc_update_bits(codec, DAC_ANALOG3, 0x1 << DAC_ANALOG3_PAEN_FR_FL_SFT, 0x01 << DAC_ANALOG3_PAEN_FR_FL_SFT);
     snd_soc_update_bits(codec, DAC_ANALOG3, 0x1 << DAC_ANALOG3_PAOSEN_FR_FL_SFT, 0x01 << DAC_ANALOG3_PAOSEN_FR_FL_SFT);
     snd_soc_update_bits(codec, DAC_DIGITALCTL, 0x03 << DAC_DIGITALCTL_DEFL_SFT, 0x03 << DAC_DIGITALCTL_DEFL_SFT);
-    snd_soc_update_bits(codec, DAC_ANALOG1, 0x01 << DAC_ANALOG1_PASW_SFT, 0x01 << DAC_ANALOG1_PASW_SFT);
     snd_soc_update_bits(codec, DAC_ANALOG3, 0x03 << 0, 0x03);
 }
 
@@ -1554,6 +1553,7 @@ static int atc2603c_probe(struct snd_soc_codec *codec)
     	snd_soc_update_bits(codec, DAC_ANALOG1, 0x3f << DAC_ANALOG1_VOLUME_SFT, 0x28 << DAC_ANALOG1_VOLUME_SFT);
     	snd_soc_update_bits(codec, DAC_VOLUMECTL0, 0xff << DAC_VOLUMECTL0_DACFL_VOLUME_SFT, 0xb5 << DAC_VOLUMECTL0_DACFL_VOLUME_SFT);
     	snd_soc_update_bits(codec, DAC_VOLUMECTL0, 0xff << DAC_VOLUMECTL0_DACFR_VOLUME_SFT, 0xb5 << DAC_VOLUMECTL0_DACFR_VOLUME_SFT);
+        snd_soc_update_bits(codec, DAC_ANALOG1, 0x01 << DAC_ANALOG1_PASW_SFT, 0x00 << DAC_ANALOG1_PASW_SFT);
 	return 0;
 }
 
