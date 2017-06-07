@@ -1364,7 +1364,7 @@ static int atc2603c_audio_hw_free(
 	struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
 	struct snd_soc_codec *codec = dai->codec;
-	snd_dbg("atc2603c_audio_hw_free\n");
+	//snd_dbg("atc2603c_audio_hw_free\n");
 	/* disable the atc2603c i2s input function */
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		//printk("SNDRV_PCM_STREAM_PLAYBACK\n");

@@ -245,7 +245,7 @@ static int atm7059_link_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	int ret;
-	snd_dbg("###atm7059_link_hw_params\n");
+	//snd_dbg("###atm7059_link_hw_params\n");
 
 	/* set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |

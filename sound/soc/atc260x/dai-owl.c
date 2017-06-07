@@ -735,12 +735,12 @@ static int atm7059_dai_hw_params(struct snd_pcm_substream *substream,
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
         #ifdef CONFIG_SND_UBUNTU
-        printk(KERN_ERR"%s,SNDRV_PCM_FORMAT_S16_LE\n", __func__);
+        //printk(KERN_ERR"%s,SNDRV_PCM_FORMAT_S16_LE\n", __func__);
         break;
         #endif
 	case SNDRV_PCM_FORMAT_S32_LE:
         #ifdef CONFIG_SND_UBUNTU
-        printk(KERN_ERR"%s,SNDRV_PCM_FORMAT_S32_LE\n", __func__);
+        //printk(KERN_ERR"%s,SNDRV_PCM_FORMAT_S32_LE\n", __func__);
         #endif
 		break;
 	default:

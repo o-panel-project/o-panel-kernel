@@ -461,7 +461,7 @@ static inline void owl_i2c_clear_tcb(struct owl_i2c_dev *dev)
 
     /* clear IRQ pending timeout, we have to reset the I2C controller */
 
-    i2c_warn("%s(): [i2c%d] clear IRQ pending error! reset controller\n",
+    i2c_warn("%s(): [i2c%d] clear IRQ pending error! reset controller",
         __FUNCTION__,
         dev->adapter.nr);
 
@@ -702,7 +702,7 @@ static int can_use_fifo_trans(struct owl_i2c_dev *dev,
     case 2:
         /* 2 message must be read from device */
         if ((msgs[0].flags & I2C_M_RD) || !(msgs[1].flags & I2C_M_RD)) {
-            i2c_warn("%s(): cannot use fifo mode, msgs[0].flags 0x%x, msgs[0].flags 0x%x\n", 
+            i2c_warn("%s(): cannot use fifo mode, msgs[0].flags 0x%x, msgs[0].flags 0x%x", 
                 __FUNCTION__, msgs[0].flags, msgs[1].flags);
             break;
         }
@@ -999,7 +999,7 @@ static int owl_i2c_fifo_irq(struct owl_i2c_dev *dev, int stop_detected)
         __FUNCTION__, dev->state, dev->msg_idx, msg->len, stop_detected);
 
     if (dev->msg_idx >= 2) {
-        i2c_warn("%s(): [i2c%d] i2c bus error! I2C_CTL 0x%x, I2C_STAT 0x%x, fifostat 0x%x\n", 
+        i2c_warn("%s(): [i2c%d] i2c bus error! I2C_CTL 0x%x, I2C_STAT 0x%x, fifostat 0x%x", 
             __FUNCTION__,
             dev->adapter.nr,
             owl_i2c_readl(dev, I2C_CTL),
@@ -1013,7 +1013,7 @@ static int owl_i2c_fifo_irq(struct owl_i2c_dev *dev, int stop_detected)
 
     fifostat = owl_i2c_readl(dev, I2C_FIFOSTAT);
     if (fifostat & I2C_FIFOSTAT_RNB) {
-        i2c_warn("%s(): [i2c%d] no ACK, fifostat 0x%x\n", __FUNCTION__, 
+        i2c_warn("%s(): [i2c%d] no ACK, fifostat 0x%x", __FUNCTION__, 
             dev->adapter.nr,
             fifostat);
         owl_i2c_reset(dev);
@@ -1067,7 +1067,7 @@ static irqreturn_t owl_i2c_interrupt(int irq, void *dev_id)
         goto out;
 
     if (dev->msgs == NULL) {
-        i2c_warn("I2C: skip spurious interrupt, status 0x%x\n", status);
+        i2c_warn("I2C: skip spurious interrupt, status 0x%x", status);
         goto out;
     }
 
@@ -1078,7 +1078,7 @@ static irqreturn_t owl_i2c_interrupt(int irq, void *dev_id)
         if ( status & I2C_STAT_RACK) {
             i2c_dbg("ACK\n");                   
         } else {                    
-            i2c_warn("No Ack\n");
+            i2c_warn("No Ack");
             goto no_ack;
         }
     }
