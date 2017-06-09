@@ -1663,7 +1663,7 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 						finger, TOUCHES[finger].x, TOUCHES[finger].y,
 						TOUCHES[finger].weight, TOUCHES[finger].area,
 						TOUCHES[finger].direction, TOUCHES[finger].speed);
-					need_report = 1;
+					need_report++;
 				} else {
 					TOUCHES[finger].state = TOUCH_MOVE;
 					if (moved) {
@@ -1671,16 +1671,18 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 							finger, TOUCHES[finger].x, TOUCHES[finger].y,
 							TOUCHES[finger].weight, TOUCHES[finger].area,
 							TOUCHES[finger].direction, TOUCHES[finger].speed);
-						need_report = 1;
+						need_report++;
 					}
+#if 0	/* reduced event cancel */
 					if (pos_moved == 0)
 						need_report = 0;
+#endif
 				}
 			} else {
 				/* touch up event */
 				TOUCHES[finger].state = TOUCH_UP;
 				FT5X06_DEBUG("(%d)[%d] up", type, finger);
-				need_report = 1;
+				need_report++;
 			}
 		} else {
 			/* finger.id touch event not found */
@@ -1690,7 +1692,7 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 				TOUCHES[finger].weight = 0;	/* PRESSURE = 0 */
 				TOUCHES[finger].state = TOUCH_UP;
 				FT5X06_DEBUG("( )[%d] up (no event)", finger);
-				need_report = 1;
+				need_report++;
 			}
 		}
 	}
