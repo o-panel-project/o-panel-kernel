@@ -38,6 +38,7 @@
 #include <mach/clkname.h>
 #include <mach/module-owl.h>
 
+#define I2C_DEBUG_SWITCH
 static int info_switch;
 static int err_switch;
 
@@ -1013,7 +1014,7 @@ static int owl_i2c_fifo_irq(struct owl_i2c_dev *dev, int stop_detected)
 
     fifostat = owl_i2c_readl(dev, I2C_FIFOSTAT);
     if (fifostat & I2C_FIFOSTAT_RNB) {
-        i2c_warn("%s(): [i2c%d] no ACK, fifostat 0x%x", __FUNCTION__, 
+        i2c_info("%s(): [i2c%d] no ACK, fifostat 0x%x", __FUNCTION__, 
             dev->adapter.nr,
             fifostat);
         owl_i2c_reset(dev);
