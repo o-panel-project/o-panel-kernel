@@ -43,14 +43,62 @@
 #include <linux/mfd/atc260x/atc260x.h>
 
 #define MY_NAME "WPC_IO"
-#define IO_INFO(fmt, arg...) printk(KERN_INFO MY_NAME ": " fmt "\n" , ## arg)
-#define IO_DBG(fmt, arg...)  printk(KERN_DEBUG MY_NAME " %s: " fmt "\n" , __FUNCTION__ , ## arg)
-#define IO_ERR(fmt, arg...)  printk(KERN_ERR  MY_NAME " %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#define IO_INFO(fmt, arg...) \
+	do { \
+		printk(KERN_INFO MY_NAME " %s: " fmt "\n" , __FUNCTION__, ##arg); \
+	} while (0)
+#define IO_ERR(fmt, arg...) \
+	do { \
+		printk(KERN_ERR  MY_NAME " %s: " fmt "\n" , __FUNCTION__, ##arg); \
+	} while (0)
 
 #define IO_DRV_VERSION			"2.0.0 for 3.10.37"
 #define MAX_OPEN_COUNT			2
 
 #define MADC_SAMPLE_RATE_MS		50
+
+/*
+ * debug print switch
+ */
+static int debug_switch = 0;
+#define IO_DBG(fmt, arg...) \
+	do { \
+		if (debug_switch == 1) \
+		printk(KERN_DEBUG MY_NAME " %s: " fmt "\n" , __FUNCTION__, ##arg); \
+	} while (0)
+#define IO_DBGV(fmt, arg...) \
+	do { \
+		if (debug_switch > 1) \
+		printk(KERN_DEBUG MY_NAME " %s: " fmt "\n" , __FUNCTION__, ##arg); \
+	} while (0)
+
+static ssize_t debug_switch_show(struct class *class,
+		struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n(0:off, 1:on, 2:detail)\n", debug_switch);
+}
+
+static ssize_t debug_switch_store(struct class *class,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	int val;
+	ssize_t result;
+	result = sscanf(buf, "%d", &val);
+	if (result != 1)
+		return -EINVAL;
+	debug_switch = val;
+	return count;
+}
+
+static struct class_attribute wpcio_class_attrs[] = {
+	__ATTR(debug, S_IWUSR | S_IRUGO, debug_switch_show, debug_switch_store),
+	__ATTR_NULL,
+};
+
+struct class wpcio_class = {
+	.name = "wpcio",
+	.class_attrs = wpcio_class_attrs,
+};
 
 struct _wpcio_data {
 	unsigned long open_check;
@@ -317,13 +365,13 @@ static void conversion_work_handler(void* context) {
 	u32 d;
 	ret=atc260x_ex_auxadc_read_by_name("AUX0",&d);
 	if(ret < 0)
-		printk("cannot get the AUX0 correct translation data!\n");
+		IO_ERR("cannot get the AUX0 correct translation data!");
 	//printk("AUX0 value=%d\n",d);
 	wpcio_data->dc_level = d;
 
 	ret=atc260x_ex_auxadc_read_by_name("AUX2",&d);
 	if(ret < 0)
-		printk("cannot get the AUX2 correct translation data!\n");
+		IO_ERR("cannot get the AUX2 correct translation data!");
 	//printk("AUX2 value=%d\n",d);
 	wpcio_data->bat1_level = d;
 
@@ -411,6 +459,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			data |= wpcio_get_value("dipswitch2-gpios") ? WPC_DIPSW_2 : 0;
 			data |= wpcio_get_value("dipswitch3-gpios") ? WPC_DIPSW_3 : 0;
 			data |= wpcio_get_value("dipswitch4-gpios") ? WPC_DIPSW_4 : 0;
+			IO_DBG("Get DIPSW=0x%X", data);
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_GET_LED:
@@ -418,6 +467,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			data  = wpcio_get_value("leds_green-gpios") ? WPC_LED_GREEN : 0;
 			data |= wpcio_get_value("leds_red-gpios")   ? WPC_LED_RED : 0;
 			data |= wpcio_get_value("leds_orange-gpios")? WPC_LED_ORANGE : 0;
+			IO_DBG("Get LED=0x%X", data);
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_SET_LED:
@@ -425,6 +475,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			wpcio_set_value("leds_green-gpios", (data & WPC_LED_GREEN) ? 1:0);
 			wpcio_set_value("leds_red-gpios",   (data & WPC_LED_RED)   ? 1:0);
 			wpcio_set_value("leds_orange-gpios",(data & WPC_LED_ORANGE)? 1:0);
+			IO_DBG("Set LED=0x%X", data);
 			return 0;
 
 		case WPC_RESET_USB_HUB:
@@ -455,7 +506,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				wpcio_data.usb2_overcurrent = wpcio_get_value("usb_memory_overcur-gpios")? 0:1;
 				if (!wpcio_data.usb2_overcurrent) wpcio_data.usb2_on = 1;
 				else {
-					printk(MY_NAME": USB2 overcurrent, switched off\n");
+					IO_INFO("USB2 overcurrent, switched off");
 					// turn off usb2
 					//gpio_set_value_cansleep(GPIO_PIN_USB2_OE_N, 1);
 					//gpio_set_value_cansleep(GPIO_PIN_USB2_POWER, 0);
@@ -475,6 +526,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				wpcio_data.usb2_on = 0;
 			}
 			spin_unlock(&wpcio_data.acc_lock);
+			IO_DBG("USB2 On/Off=%ld", arg);
 			return 0;
 
 		case WPC_SET_USB3_ONOFF:
@@ -494,6 +546,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				IO_INFO("gpio usb_felica_pwr output to 0");
 			}
 			spin_unlock(&wpcio_data.acc_lock);
+			IO_DBG("USB3 On/Off=%ld", arg);
 			return 0;
 
 		case WPC_SET_USB4_ONOFF:
@@ -505,7 +558,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				//wpcio_data.usb4_overcurrent = gpio_get_value_cansleep(GPIO_PIN_USB4_OVERCUR_N)? 0:1;
 				if (!wpcio_data.usb2_overcurrent) wpcio_data.usb4_on = 1;
 				else {
-					printk(MY_NAME": USB2 overcurrent, switched off\n");
+					IO_INFO("USB2 overcurrent, switched off");
 					// turn off usb2
 					//gpio_set_value_cansleep(GPIO_PIN_USB4_OE_N, 1);
 					//gpio_set_value_cansleep(GPIO_PIN_USB4_POWER, 0);
@@ -521,6 +574,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				wpcio_data.usb4_on = 0;
 			}
 			spin_unlock(&wpcio_data.acc_lock);
+			IO_DBG("USB4 On/Off=%ld", arg);
 			return 0;
 
 		case WPC_GET_USB2_OVERCUR:
@@ -549,6 +603,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			data  = wpcio_get_value("battery_fast-gpios") ?0:WPC_CHARGING_FAST;
 			data |= wpcio_get_value("battery_full-gpios") ?0:WPC_CHARGING_FULL;
 			data |= wpcio_get_value("battery_fault-gpios")?0:WPC_CHARGING_FAULT;
+			IO_DBG("Battery1 stat=0x%X", data);
 			return copy_to_user((void __user *)arg, &data, sizeof(data))? -EFAULT : 0;
 
 		case WPC_GET_BAT2_CHARGING_STAT:
@@ -579,13 +634,16 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return 0;
 
 		case WPC_GET_BAT1_LEVEL:
+			IO_DBG("Battery1 level=%d", wpcio_data.bat1_level);
 			return copy_to_user((void __user *)arg, &wpcio_data.bat1_level,
 					sizeof(wpcio_data.bat1_level))? -EFAULT : 0;
 		case WPC_GET_BAT2_LEVEL:
+			IO_DBG("Battery2 level=%d", wpcio_data.bat2_level);
 			return copy_to_user((void __user *)arg, &wpcio_data.bat2_level,
 					sizeof(wpcio_data.bat2_level))? -EFAULT : 0;
 
 		case WPC_GET_DC_LEVEL:
+			IO_DBG("Dc level=%d", wpcio_data.dc_level);
 			return copy_to_user((void __user *)arg, &wpcio_data.dc_level,
 					sizeof(wpcio_data.dc_level))? -EFAULT : 0;
 
@@ -626,11 +684,18 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				return -EINVAL;
 			#endif
 
+		case WPC_SET_BATTERY_CHARGE:
+		{
+			wpcio_set_value("battery_charge-gpios", arg);
+			IO_DBG("gpio battery_charge-gpios output to %ld", arg);
+			return 0;
+		}
+
 		// Colman start, 110412
 		case WPC_SET_GPIO_INPUT: {
 			struct _user_gpio * gpio = get_gpio(arg);
 			if (!gpio) {
-				printk(MY_NAME": Set INPUT gpio %ld not found\n", arg);
+				IO_ERR("Set INPUT gpio %ld not found", arg);
 				return -EINVAL;
 			}
 			if (gpio->output != 0) {
@@ -649,7 +714,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_SET_GPIO_INPUT_PULLUP: {
 			struct _user_gpio * gpio = get_gpio(arg);
 			if (!gpio) {
-				printk(MY_NAME": Set INPUT_PULLUP gpio %ld not found\n", arg);
+				IO_ERR("Set INPUT_PULLUP gpio %ld not found", arg);
 				return -EINVAL;
 			}
 			if (gpio->output != 0) {
@@ -668,7 +733,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_SET_GPIO_INPUT_PULLDOWN: {
 			struct _user_gpio * gpio = get_gpio(arg);
 			if (!gpio) {
-				printk(MY_NAME": Set INPUT_PULLDOWN gpio %ld not found\n", arg);
+				IO_ERR("Set INPUT_PULLDOWN gpio %ld not found", arg);
 				return -EINVAL;
 			}
 			if (gpio->output != 0) {
@@ -687,7 +752,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_SET_GPIO_OUTPUT_HIGH: {
 			char *property = wpcio_get_property(arg);
 			if (!property) {
-				printk(MY_NAME": Set OUTPUT_HIGH gpio %ld not found\n", arg);
+				IO_ERR("Set OUTPUT_HIGH gpio %ld not found", arg);
 				return -EINVAL;
 			}
 			wpcio_set_value(property, 1);
@@ -715,7 +780,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_SET_GPIO_OUTPUT_LOW: {
 			char *property = wpcio_get_property(arg);
 			if (!property) {
-				printk(MY_NAME": Set OUTPUT_LOW gpio %ld not found\n", arg);
+				IO_ERR("Set OUTPUT_LOW gpio %ld not found", arg);
 				return -EINVAL;
 			}
 			wpcio_set_value(property, 0);
@@ -743,7 +808,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		case WPC_GET_GPIO_LEVEL: {
 			char *property = wpcio_get_property(arg);
 			if (!property) {
-				printk(MY_NAME": Get LEVEL gpio %ld not found\n", arg);
+				IO_ERR("Get LEVEL gpio %ld not found", arg);
 				return -EINVAL;
 			}
 			data = wpcio_get_value(property);
@@ -762,7 +827,7 @@ static long wpc_io_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		// Colman end, 110412
 
 		default:
-			printk(MY_NAME": %x unknown command\n", cmd);
+			IO_ERR("0x%x unknown command", cmd);
 			return -EINVAL;
 	}
 }
@@ -781,7 +846,7 @@ static struct file_operations wpc_io_fops = {
  */
 void wpcio_powerdown_withgpio(void)
 {
-	pr_err("%s() start\n", __func__);
+	IO_ERR("start");
 
 	sys_sync();
 	sys_sync();
@@ -790,8 +855,7 @@ void wpcio_powerdown_withgpio(void)
 	sys_sync();
 	mdelay(1000);
 
-	pr_err("%s() soft_poweroff-gpios=%d\n",
-			__func__, wpcio_get_gpio("soft_poweroff-gpios"));
+	IO_ERR("soft_poweroff-gpios=%d", wpcio_get_gpio("soft_poweroff-gpios"));
 	wpcio_set_value("soft_poweroff-gpios", 1);
 
 	while (1) ;
@@ -866,7 +930,7 @@ static int __init wpc_io_init(void) {
 
 	dts = of_find_node_by_name(NULL, "wpcio-gpio");
 	if (!dts) {
-		pr_err("Could not find wpcio gpio node\n");
+		IO_ERR("Could not find wpcio gpio node");
 		return -EIO;
 	}
 	for (i = 0; i < ARRAY_SIZE(gpio_table); i++) {
@@ -926,7 +990,7 @@ static int __init wpc_io_init(void) {
 			*/
 		}
 		else {
-			printk(MY_NAME": Unable to request gpio %d, name = %s\n",
+			IO_ERR("Unable to request gpio %d, name = %s",
 					pin_table[i].gpio, pin_table[i].name);
 		}
 	}
@@ -942,11 +1006,13 @@ static int __init wpc_io_init(void) {
 			set_mux_gpio(&user_gpio[i]);
 		}
 		else {
-			printk(MY_NAME": Unable to request user gpio %d, name = %s\n",
+			IO_ERR("Unable to request user gpio %d, name = %s",
 					user_gpio[i].gpio, user_gpio[i].name);
 		}
 	}
 	// Colman end, 110412
+
+	class_register(&wpcio_class);
 
 	enable_madc();
 
@@ -984,6 +1050,7 @@ static void __exit wpc_io_exit(void) {
 
 	if (misc_deregister(&wpc_io_miscdev) < 0) IO_ERR("deregister fail");
 	destroy_workqueue(wpcio_data.workqueue);
+	class_unregister(&wpcio_class);
 }
 
 module_init(wpc_io_init);

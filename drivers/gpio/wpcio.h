@@ -57,4 +57,5 @@
 #define WPC_SET_GPIO_OUTPUT_LOW		0x5717	/* set pin as output, output level = low */
 #define WPC_GET_GPIO_LEVEL			0x5718	/* get pin level */
 
+#define	WPC_SET_BATTERY_CHARGE		0x5719	/* battery charge on/off */
 #endif
