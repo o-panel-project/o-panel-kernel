@@ -1211,7 +1211,11 @@ static ssize_t reset_store(struct device *dev,
     
     sscanf(buf, "%d", &data);
     if ( data == 1 ) {
-        ft5x06_reset(ftdevice);
+	gpio_set_value_cansleep(gpio_reset, 0);
+        msleep(500);
+        gpio_set_value_cansleep(gpio_reset, 1);
+
+        //ft5x06_reset(ftdevice);
     }
     
     return count;
