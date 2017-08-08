@@ -146,6 +146,7 @@ volatile int current_val = 0;
 //static struct i2c_client * pClient = NULL;
 
 static unsigned gpio_reset = FT5X06_RESET_PIN;
+static unsigned reset_waitms = 50;
 
 /*
   * I2C funcionts:
@@ -1208,17 +1209,37 @@ static ssize_t reset_store(struct device *dev,
 {
     int data;
     struct ft5x06_device *ftdevice = (struct ft5x06_device *)dev_get_drvdata(dev);
-    
+
     sscanf(buf, "%d", &data);
     if ( data == 1 ) {
-	gpio_set_value_cansleep(gpio_reset, 0);
-        msleep(500);
+        gpio_set_value_cansleep(gpio_reset, 0);
+        msleep(reset_waitms);
         gpio_set_value_cansleep(gpio_reset, 1);
 
         //ft5x06_reset(ftdevice);
     }
-    
+
     return count;
+}
+
+static ssize_t reset_waitms_show(struct device *dev,
+        struct device_attribute *attr,char *buf)
+{
+	return sprintf(buf, "%d ms\n", reset_waitms);
+}
+
+static ssize_t reset_waitms_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned data;
+	int cnt;
+
+	cnt = sscanf(buf, "%d", &data);
+	if (cnt > 0) {
+		reset_waitms = data;
+	}
+
+	return count;
 }
 
 static ssize_t str_show(struct device *dev, 
@@ -1372,6 +1393,8 @@ static struct device_attribute ft5x06_attr[] = {
     __ATTR(firmware_version, S_IRUSR | S_IWUSR, info_show, info_store), //  /sys/devices/b0174000.i2c/i2c-1/1-0038/firmware_version
     __ATTR(scan_rate, S_IRUSR | S_IWUSR, rate_show, rate_store),
     __ATTR(reset, S_IRUSR | S_IWUSR, reset_show, reset_store),
+	__ATTR(reset_waitms, S_IRUSR | S_IWUSR,
+			reset_waitms_show, reset_waitms_store),
     __ATTR(STR, S_IRUSR | S_IWUSR, str_show, str_store),
     __ATTR(rest_check, S_IRUSR | S_IWUSR, reset_check_show, reset_check_store),
     __ATTR(rest_nocheck, S_IRUSR | S_IWUSR, reset_nocheck_show, reset_nocheck_store),
