@@ -213,11 +213,13 @@ static int _atc260x_regulator_get_vchng_stable_time(struct regulator_dev *rdev,
 	/* 升压时需要等待, 降压时不需要.
 	 * DCDC/LDO的selector与输出电压不一定正相关的(有些DCDC/LDO有硬件BUG的缘故),
 	 * 所以不能简单地比较selector. */
-	old_volt = (atc260x_regu->regulator_desc.ops->list_voltage)(rdev, old_selector);
+	old_volt = (atc260x_regu->regulator_desc.ops->list_voltage)(
+		atc260x_regu->regulator, old_selector);
 	if (old_volt < 0)
 		return old_volt; /* error code */
 
-	new_volt = (atc260x_regu->regulator_desc.ops->list_voltage)(rdev, new_selector);
+	new_volt = (atc260x_regu->regulator_desc.ops->list_voltage)(
+		atc260x_regu->regulator, new_selector);
 	if (new_volt < 0)
 		return new_volt; /* error code */
 
@@ -766,7 +768,7 @@ static void _atc260x_dump_regulator_info(struct atc260x_regulator_dev *atc260x_r
 	pr_info("    valid_ops_mask   : 0x%x\n", init_data->constraints.valid_ops_mask);
 #endif
 }
-
+extern int atc260x_reg_write(struct atc260x_dev *atc260x, uint reg, u16 val); 
 static int atc260x_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_config config = { };
@@ -779,7 +781,11 @@ static int atc260x_regulator_probe(struct platform_device *pdev)
 
 	atc260x = atc260x_get_parent_dev(&pdev->dev);
 	regu_id = pdev->id;
-
+	int value;
+	value = atc260x_reg_read(atc260x,0x17);
+	value &= (~(1 << 5));
+	value |= (1 << 6);
+	atc260x_reg_write(atc260x, 0x17, value);
 	dev_info(&pdev->dev, "Probing %s, id=%u\n", pdev->name, regu_id);
 
 	init_data = of_get_regulator_init_data(&pdev->dev, pdev->dev.of_node);
@@ -912,6 +918,13 @@ static int atc260x_regulator_resume_early(struct device *dev)
 
 	/* 为加快resume, 这里就不打印regulator状态了, 打印也无甚意义. */
 
+	struct atc260x_dev *atc260x;
+	atc260x = atc260x_get_parent_dev(dev);
+	int value;
+	value = atc260x_reg_read(atc260x,0x17);
+	value &= (~(1 << 5));
+	value |= (1 << 6);
+	atc260x_reg_write(atc260x, 0x17, value);
 	if ((atc260x_regu->regulator->constraints->state_mem.mode & REGULATOR_MEM_STATE_MODE_NO_RESTORE) == 0) {
 		/*对于cpu_vdd此类的regulator，由于启动代码中会设置电压且cpu跑在高频
 		，因此除非由cpufreq调整频率电压，其他模块不应调整电压*/
