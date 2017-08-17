@@ -202,8 +202,8 @@ static int generic_dsi_panel_enable(struct owl_dss_device *dssdev)
 static void generic_dsi_panel_disable(struct owl_dss_device *dssdev)
 {
 	/* disable backlight first */
-    owl_backlight_set_onoff(0);
-		msleep(10);
+        owl_backlight_set_onoff(0);
+	msleep(200);
 	generic_dsi_panel_power_off(dssdev);
 
 	dssdev->state = OWL_DSS_DISPLAY_DISABLED;

@@ -391,10 +391,9 @@ static void dsihw_phy_config(struct platform_device *pdev)
 	
 	udelay(100);
 	tmp=dsihw_read_reg(pdev,DSI_PHY_CTRL);
-	if(tmp&0x02000000){
+//	if(tmp&0x02000000){
 		
-		printk("ERR : dsi cal fail!!\n");
-
+//		printk("ERR : dsi cal fail!!\n");
 		tmp = dsihw_read_reg(pdev,DSI_PHY_CTRL);//disable calibrate
 		tmp &= (~(1<<25));
 		dsihw_write_reg(pdev,DSI_PHY_CTRL, tmp);
@@ -415,7 +414,7 @@ static void dsihw_phy_config(struct platform_device *pdev)
 		tmp |= (1<<24);
 		dsihw_write_reg(pdev,DSI_PHY_CTRL, tmp);
 
-	}
+//	}
 	
 	wait_lanes_stop();
 	
