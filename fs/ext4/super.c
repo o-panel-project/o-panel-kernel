@@ -40,6 +40,7 @@
 #include <linux/crc16.h>
 #include <linux/cleancache.h>
 #include <asm/uaccess.h>
+#include <linux/gpio.h>
 
 #include <linux/kthread.h>
 #include <linux/freezer.h>
@@ -54,6 +55,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/ext4.h>
 
+
+extern void wpcio_powerdown_withgpio(void);
 static struct proc_dir_entry *ext4_proc_root;
 static struct kset *ext4_kset;
 static struct ext4_lazy_init *ext4_li_info;
@@ -4167,6 +4170,11 @@ static journal_t *ext4_get_journal(struct super_block *sb,
 	journal_inode = ext4_iget(sb, journal_inum);
 	if (IS_ERR(journal_inode)) {
 		ext4_msg(sb, KERN_ERR, "no journal found");
+                ext4_msg(sb, KERN_ERR, "o-panel:card init failed");
+                //Reset mcu when card init failed,just for o-panel
+                //wpcio_powerdown_withgpio();
+		gpio_set_value_cansleep(116,1);
+
 		return NULL;
 	}
 	if (!journal_inode->i_nlink) {
@@ -4355,6 +4363,11 @@ static int ext4_load_journal(struct super_block *sb,
 
 	if (err) {
 		ext4_msg(sb, KERN_ERR, "error loading journal");
+
+		ext4_msg(sb, KERN_ERR, "o-panel:card init failed");
+	 	//Reset mcu when card init failed,just for o-panel
+		gpio_set_value_cansleep(116,1);
+		//wpcio_powerdown_withgpio();
 		jbd2_journal_destroy(journal);
 		return err;
 	}
