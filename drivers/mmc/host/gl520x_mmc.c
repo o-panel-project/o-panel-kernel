@@ -39,6 +39,7 @@
 #include "wlan_plat_data.h"
 #include "wlan_device.h"
 
+extern void wpcio_powerdown_withgpio(void);
 static int act_check_trs_date_status(
 		struct gl520xmmc_host *host , struct mmc_request *mrq);
 static void act_dump_reg(struct gl520xmmc_host *host);
@@ -751,6 +752,7 @@ static int acts_mmc_send_command(struct gl520xmmc_host *host,
 	unsigned int cmd_rsp_mask = 0;
 	u32 status ;
 	int err = 0;
+	int ret;
 
 	cmd->error = 0;
 	
@@ -830,17 +832,26 @@ static int acts_mmc_send_command(struct gl520xmmc_host *host,
 	}
 	
 	/*
-	*wait for cmd finish 
-	* Some bad card dose need more time to complete
+	*wait for cmd finish
+	* Some bad card dose need more time to complete,some cmd also(e.g. sanisize)
 	* data transmission and programming.
 	*/
-	if (!wait_for_completion_timeout(&host->sdc_complete,  30*HZ)) {
+	if (mmc_card_expected_wifi(host->type_expected))
+		ret = wait_for_completion_timeout(&host->sdc_complete,  5 * HZ);
+	else
+		ret = wait_for_completion_timeout(&host->sdc_complete,  50 * HZ);
+	if (!ret) {
 		pr_err("!!!host%d:cmd wait ts interrupt timeout\n",host->id);
 		cmd->error = CMD_TS_TIMEOUT;
 		act_dump_reg(host);
 		goto out;
 	}
-
+	/*if SANITIZE, print timestamp*/
+	if (mmc_card_expected_emmc(host->type_expected) &&
+		(cmd->opcode == MMC_SWITCH) &&
+		(((cmd->arg >> 16) & 0xff) == EXT_CSD_SANITIZE_START))
+		pr_info("host%d: wait SANITIZE cmd sdc_complete OK, ret:%d\n", host->id, ret);
+		
 	DEBUG("host%d: wait cmd sdc_complete OK\n",host->id);
 	
 	status = readl(HOST_STATE(host));
@@ -1100,7 +1111,7 @@ static void acts_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 chec_err:	
 	if( ret == DATA_CMD){
 
-		if (!wait_for_completion_timeout(&host->sdc_complete,  10*HZ)) {
+		if (!wait_for_completion_timeout(&host->sdc_complete,  10 * HZ)) {
 				pr_err("!!!host%d:wait date transfer ts intrupt timeout\n",host->id);
 		}	
 		
@@ -1197,6 +1208,12 @@ static int act_check_trs_date_status(
 	if(check_status){
 		if(check_status & SD_STATE_TOUTE){
 			pr_err("data:card HW  timeout error\n");
+
+			//Reset mcu when card init failed,just for o-panel 
+			pr_err("o-panel:card init failed\n");
+			gpio_set_value_cansleep(116, 1);
+			//wpcio_powerdown_withgpio();
+
 			data->error = HW_TIMEOUT;
 			goto out;
 
