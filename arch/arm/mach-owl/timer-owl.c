@@ -23,6 +23,7 @@
 #include <linux/clocksource.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/cpu.h>
 #include <asm/sched_clock.h>
 
 #include <mach/hardware.h>
@@ -119,6 +120,46 @@ static struct irqaction owl_timer_irq = {
 	.dev_id		= &owl_clkevt,
 };
 
+static void owl_check_and_reset_time0_in_cpu0_idle(unsigned long flag)
+{
+	static unsigned int val = 0;
+	
+	if(smp_processor_id() != 0 || (act_readl(T0_CTL) & 0x4) == 0)
+		return;
+	
+	if(flag == IDLE_START)
+		val = act_readl(T0_VAL);
+	else if(flag == IDLE_END && act_readl(T0_VAL) == val)
+	{
+		pr_err("time0 crashed, now reset it.\n");
+		act_writel(0, T0_CTL);
+		while(act_readl(T0_CTL) & 0x4) 
+		{
+			//do nothing here, just wait
+		}
+		act_writel(val, T0_VAL);
+		act_writel(0x4, T0_CTL);
+		pr_err("time0 reset successed.\n");
+	}
+}
+
+static int owl_idle_notifier(struct notifier_block *nb,
+					     unsigned long val,
+					     void *data)
+{
+	owl_check_and_reset_time0_in_cpu0_idle(val);
+    return 0;
+}
+
+static struct notifier_block owl_idle_nb = {
+    .notifier_call = owl_idle_notifier,
+};
+
+static void owl_register_idle_notifier(void)
+{
+	idle_notifier_register(&owl_idle_nb);
+}
+
 void __init owl_gp_timer_init(void)
 {
 	unsigned long rate;
@@ -136,7 +177,8 @@ void __init owl_gp_timer_init(void)
 
 	setup_sched_clock(owl_read_sched_clock, 32, rate);
 	clocksource_register_hz(&owl_clksrc, rate);
-
+	owl_register_idle_notifier();
+	
 	/* Timer 1 is used for events, fix according to rate */
 	act_writel(0, T1_CTL);
 	act_writel(0, T1_VAL);
