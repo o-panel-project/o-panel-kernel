@@ -194,6 +194,7 @@ static int owlfb_set_overlay_info(struct fb_info *fbi,int ovl_id , struct owlfb_
 	struct owl_overlay *ovl = NULL;
 	struct owl_overlay_info info;
 	struct owl_dss_device * src_dssdev = ofbi->manager->device;
+	struct fb_var_screeninfo *var = &fbi->var;
 	u16 src_out_w, src_out_h;
 	
 	if(ovl_id == OWLFB_CURSOR_OVL_ID)
@@ -208,6 +209,12 @@ static int owlfb_set_overlay_info(struct fb_info *fbi,int ovl_id , struct owlfb_
 		if(src_dssdev != NULL && src_dssdev->driver != NULL){
 			u16 overscan_w, overscan_h;
 			src_dssdev->driver->get_resolution(src_dssdev, &src_out_w, &src_out_h);
+			
+			if(src_out_w!=var->xres && src_out_h !=var->yres)
+			{
+				cursor.pos_x = userinfo->pos_x *  src_out_w / var->xres;			
+				cursor.pos_y = userinfo->pos_y *  src_out_h / var->yres;
+			}
 			if(src_dssdev->driver->get_over_scan)
 			{
 				src_dssdev->driver->get_over_scan(src_dssdev,&overscan_w,&overscan_h);
@@ -271,8 +278,8 @@ static int owlfb_set_overlay_info(struct fb_info *fbi,int ovl_id , struct owlfb_
 				}
 			}	
 			
-			link_cursor.pos_x = userinfo->pos_x	* link_out_w / src_out_w ;			
-			link_cursor.pos_y = userinfo->pos_y * link_out_h / src_out_h ;	
+			link_cursor.pos_x = userinfo->pos_x	* link_out_w / var->xres ;			
+			link_cursor.pos_y = userinfo->pos_y * link_out_h / var->yres ;	
 			
 			link_cursor.pos_x = link_out_w / 2 - link_overscan_w * (link_out_w / 2 - link_cursor.pos_x) / link_out_w ;
 			link_cursor.pos_y = link_out_h / 2 - link_overscan_h * (link_out_h / 2 - link_cursor.pos_y) / link_out_h ;
@@ -298,7 +305,6 @@ static int owlfb_set_overlay_info(struct fb_info *fbi,int ovl_id , struct owlfb_
 			{
 				link_cursor.pos_y = (link_cursor.pos_y & (~0x01));					
 			}			
-			printk("link_cursor.pos_x %d  link_cursor.pos_y  %d\n",link_cursor.pos_x,link_cursor.pos_y);
 			link_cursor.paddr = cursor.paddr;
 			link_cursor.stride =  cursor.stride;
 			link_cursor.enable =  cursor.enable;		

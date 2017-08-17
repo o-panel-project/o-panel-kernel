@@ -420,8 +420,11 @@ static irqreturn_t owl_uart_irq(int irq, void *dev_id)
 	struct uart_port *port = dev_id;
 	unsigned int stat;
 
-	spin_lock_irqsave(&port->lock, flags);
+	//spin_lock_irqsave(&port->lock, flags);
 	stat = owl_read(port, UART_STAT);
+
+	/* clear TX/RX IRQ pending*/
+	owl_write(port, stat, UART_STAT);
 
 	/*when using DMA, handle_rx will never be called*/
 	if (stat & UART_STAT_RIP)
@@ -430,11 +433,7 @@ static irqreturn_t owl_uart_irq(int irq, void *dev_id)
 	if (stat & UART_STAT_TIP)
 		handle_tx(port);
 
-	stat = owl_read(port, UART_STAT);
-	stat |= UART_STAT_RIP | UART_STAT_TIP;
-	owl_write(port, stat, UART_STAT);
-
-	spin_unlock_irqrestore(&port->lock, flags);
+	//spin_unlock_irqrestore(&port->lock, flags);
 
 	return IRQ_HANDLED;
 }
@@ -1525,7 +1524,7 @@ static int __init owl_console_setup(struct console *co, char *options)
 	if (options)
 		uart_parse_options(options, &baud, &parity, &bits, &flow);
 
-#ifdef OWL_CONSOLE_KEEP_ON
+#ifdef CONFIG_OWL_CONSOLE_KEEP_ON
 	owl_console_port = port->line;
 	printk(KERN_INFO "owl_serial: console setup on port #%d\n",
 			owl_console_port);

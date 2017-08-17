@@ -685,7 +685,7 @@ int de_ovl_setup(enum owl_de_path_id channel, enum owl_plane plane,
 
 		de_ops->fb_addr_set(plane, DE_VIDEO_FB0, ba0);
 
-		if (oi->color_mode == OWL_DSS_COLOR_NV12) {
+		if (oi->color_mode == OWL_DSS_COLOR_NV21) {
 			de_ops->fb_addr_set(plane, DE_VIDEO_FB1, ba2);
 			de_ops->fb_addr_set(plane, DE_VIDEO_FB2, ba1);
 		} else {
