@@ -480,7 +480,12 @@ static int get_configuration_from_dts(struct of_device_id *id )
 	printk("====otgvbus_gpio: num-%d, active-%s---detect_type=%d,idpin_type=%d,vbus_type=%d---\n",\
 	port_config->power_switch_gpio_no, port_config->power_switch_active_level ? "high" : "low",port_config->detect_type,\
 	port_config->idpin_type,port_config->vbus_type);
-	if (gpio_request(port_config->power_switch_gpio_no,  id->compatible)) {		
+	ret = gpio_request(port_config->power_switch_gpio_no,  id->compatible);
+	if (ret == -EBUSY) {
+		/* usb_memory_pwr(gpio-87) already requested by wpcio */
+		printk("<umonitor>gpio-%d already requested\n", port_config->power_switch_gpio_no);
+		ret = 0;
+	} else if (ret) {
 		printk("<umonitor>err: fail to request vbus gpio [%d]\n", port_config->power_switch_gpio_no);
 		port_config->power_switch_gpio_no = 0xffff;
 		return 0;
