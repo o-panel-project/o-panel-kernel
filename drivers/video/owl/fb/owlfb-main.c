@@ -854,7 +854,7 @@ static int owlfb_set_par(struct fb_info *fbi)
 	struct owlfb_info *ofbi = FB2OFB(fbi);
 	int r;
 
-	printk("set_par(%d)\n", FB2OFB(fbi)->id);
+	DBG("set_par(%d)\n", FB2OFB(fbi)->id);
 	
 	owlfb_set_display_mode(fbi);
 

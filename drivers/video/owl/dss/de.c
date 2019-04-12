@@ -560,7 +560,7 @@ void de_mgr_cursor_setup(enum owl_de_path_id channel, struct owl_cursor_info *in
 	if(!info->enable){
 		de_ops->curosr_enable(channel,false);
 	}else{
-		printk("de_mgr_cursor_setup info->pos_x 0x%x info->pos_y 0x%x\n ",info->pos_x,info->pos_y);
+		DSSDBG("de_mgr_cursor_setup info->pos_x 0x%x info->pos_y 0x%x\n ",info->pos_x,info->pos_y);
 		de_ops->curosr_set_position(channel,info->pos_x,info->pos_y);
 		de_ops->curosr_set_addr(channel,info->paddr);
 		de_ops->curosr_set_str(channel,info->stride);
