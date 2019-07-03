@@ -1742,9 +1742,9 @@ static int ft5x06_touch_event(struct ft5x06_device *ftdev)
 #define TOUCHES	(ftdev->ftdata->touches)
 #define REPORT_MT(x, y, amplitude, width, pressure) \
 do {     \
+	input_report_abs(input, ABS_MT_TOUCH_MAJOR, amplitude);  \
 	input_report_abs(input, ABS_MT_POSITION_X, x);           \
 	input_report_abs(input, ABS_MT_POSITION_Y, y);           \
-	input_report_abs(input, ABS_MT_TOUCH_MAJOR, amplitude);  \
 	input_report_abs(input, ABS_MT_WIDTH_MAJOR, width);      \
 	input_report_abs(input, ABS_MT_PRESSURE, pressure);      \
 } while (0)
@@ -1778,6 +1778,7 @@ static int ft5x06_report_b(struct ft5x06_device *ftdev)
 			finger, TOUCHES[finger].x, TOUCHES[finger].y,
 			TOUCHES[finger].weight, TOUCHES[finger].area);
 	}
+	input_mt_report_pointer_emulation(input, true);
 	input_sync(input);
 	return 0;
 }
@@ -2302,6 +2303,10 @@ static int ft5x06_probe(struct i2c_client *client,
 #if 1
     __set_bit(EV_ABS, input->evbit);
     __set_bit(EV_SYN, input->evbit);
+	__set_bit(BTN_TOUCH, input->keybit);
+	input_set_abs_params(input, ABS_X, 0, ftdev->ftconfig->max.x-1, 0, 0);
+	input_set_abs_params(input, ABS_Y, 0, ftdev->ftconfig->max.y-1, 0, 0);
+
 	input_mt_init_slots(input, FT5X06_MAX_POINT, INPUT_MT_DIRECT);
 	input_set_abs_params(input,
 			ABS_MT_POSITION_X, 0, ftdev->ftconfig->max.x-1, 0, 0);
