@@ -1,9 +1,24 @@
 /*
  * BCM43XX Sonics SiliconBackplane PCMCIA core hardware definitions.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 2020, Broadcom.
  *
- * $Id: sbpcmcia.h 446298 2014-01-03 11:30:17Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Dual:>>
  */
 
 #ifndef	_SBPCMCIA_H
@@ -39,12 +54,10 @@
 #define	COR_BLREN		0x01
 #define	COR_FUNEN		0x01
 
-
 #define	PCICIA_FCSR		(2 / 2)
 #define	PCICIA_PRR		(4 / 2)
 #define	PCICIA_SCR		(6 / 2)
 #define	PCICIA_ESR		(8 / 2)
-
 
 #define PCM_MEMOFF		0x0000
 #define F0_MEMOFF		0x1000
@@ -84,7 +97,18 @@
 #define	SRI_BLANK		0x04
 #define	SRI_OTP			0x80
 
-#if !defined(LINUX_POSTMOGRIFY_REMOVAL)
+#define SROM16K_BANK_SEL_MASK		(3 << 11)
+#define SROM16K_BANK_SHFT_MASK		11
+#define SROM16K_ADDR_SEL_MASK	((1 << SROM16K_BANK_SHFT_MASK) - 1)
+#define SROM_PRSNT_MASK		0x1
+#define SROM_SUPPORT_SHIFT_MASK 30
+#define SROM_SUPPORTED	(0x1 << SROM_SUPPORT_SHIFT_MASK)
+#define SROM_SIZE_MASK    0x00000006
+#define SROM_SIZE_2K	2
+#define SROM_SIZE_512	1
+#define SROM_SIZE_128	0
+#define SROM_SIZE_SHFT_MASK  1
+
 /* CIS stuff */
 
 /* The CIS stops where the FCRs start */
@@ -96,13 +120,14 @@
 
 /* Standard tuples we know about */
 
-#define CISTPL_NULL			0x00
+#define CISTPL_NULL		0x00
+#define	CISTPL_END		0xff		/* End of the CIS tuple chain */
+
 #define	CISTPL_VERS_1		0x15		/* CIS ver, manf, dev & ver strings */
 #define	CISTPL_MANFID		0x20		/* Manufacturer and device id */
 #define CISTPL_FUNCID		0x21		/* Function identification */
 #define	CISTPL_FUNCE		0x22		/* Function extensions */
 #define	CISTPL_CFTABLE		0x1b		/* Config table entry */
-#define	CISTPL_END		0xff		/* End of the CIS tuple chain */
 
 /* Function identifier provides context for the function extentions tuple */
 #define CISTPL_FID_SDIO		0x0c		/* Extensions defined by SDIO spec */
@@ -113,7 +138,6 @@
 #define	LAN_MEDIA		3		/* Transmission media */
 #define	LAN_NID			4		/* Node identification (aka MAC addr) */
 #define	LAN_CONN		5		/* Connector standard */
-
 
 /* CFTable */
 #define CFTABLE_REGWIN_2K	0x08		/* 2k reg windows size */
@@ -130,7 +154,9 @@
 
 #define HNBU_SROMREV		0x00	/* A byte with sromrev, 1 if not present */
 #define HNBU_CHIPID		0x01	/* Two 16bit values: PCI vendor & device id */
+
 #define HNBU_BOARDREV		0x02	/* One byte board revision */
+
 #define HNBU_PAPARMS		0x03	/* PA parameters: 8 (sromrev == 1)
 					 * or 9 (sromrev > 1) bytes
 					 */
@@ -139,7 +165,7 @@
 #define	HNBU_AA			0x06	/* Antennas available */
 #define	HNBU_AG			0x07	/* Antenna gain */
 #define HNBU_BOARDFLAGS		0x08	/* board flags (2 or 4 bytes) */
-#define HNBU_LEDS		0x09	/* LED set */
+#define HNBU_UNUSED		0x09	/* UNUSED (was LEDs) */
 #define HNBU_CCODE		0x0a	/* Country code (2 bytes ascii + 1 byte cctl)
 					 * in rev 2
 					 */
@@ -163,9 +189,13 @@
 #define HNBU_BOARDNUM		0x18	/* board serial number, independent of mac addr */
 #define HNBU_MACADDR		0x19	/* mac addr override for the standard CIS LAN_NID */
 #define HNBU_RDLSN		0x1a	/* 2 bytes; serial # advertised in USB descriptor */
+
 #define HNBU_BOARDTYPE		0x1b	/* 2 bytes; boardtype */
-#define HNBU_LEDDC		0x1c	/* 2 bytes; LED duty cycle */
+
+#define HNBU_UNUSED2		0x1c	/* was LEDs duty cycle */
+
 #define HNBU_HNBUCIS		0x1d	/* what follows is proprietary HNBU CIS format */
+
 #define HNBU_PAPARMS_SSLPNPHY	0x1e	/* SSLPNPHY PA params */
 #define HNBU_RSSISMBXA2G_SSLPNPHY 0x1f /* SSLPNPHY RSSI mid pt sel & board switch arch */
 #define HNBU_RDLRNDIS		0x20	/* 1 byte; 1 = RDL advertises RNDIS config */
@@ -317,19 +347,20 @@
 #define HNBU_USBSSPHY_SLEEP1    0x71    /* 2 byte USB SSPHY sleep */
 #define HNBU_USBSSPHY_SLEEP2    0x72    /* 2 byte USB SSPHY sleep */
 #define HNBU_USBSSPHY_SLEEP3    0x73    /* 2 byte USB SSPHY sleep */
-#define HNBU_USBSSPHY_MDIO		0x74	/* USB SSPHY INIT regs setting */
-#define HNBU_USB30PHY_NOSS		0x75	/* USB30 NO Super Speed */
-#define HNBU_USB30PHY_U1U2		0x76	/* USB30 PHY U1U2 Enable */
-#define HNBU_USB30PHY_REGS		0x77	/* USB30 PHY REGs update */
+#define HNBU_USBSSPHY_MDIO      0x74    /* USB SSPHY INIT regs setting */
+#define HNBU_USB30PHY_NOSS      0x75    /* USB30 NO Super Speed */
+#define HNBU_USB30PHY_U1U2      0x76    /* USB30 PHY U1U2 Enable */
+#define HNBU_USB30PHY_REGS      0x77    /* USB30 PHY REGs update */
+#define HNBU_GPIO_PULL_DOWN     0x78    /* 4 byte GPIO pull down mask */
 
 #define HNBU_SROM3SWRGN		0x80	/* 78 bytes; srom rev 3 s/w region without crc8
 					 * plus extra info appended.
 					 */
-#define HNBU_RESERVED		0x81	/* Reserved for non-BRCM post-mfg additions */
+#define HNBU_RESERVED		0x81
 #define HNBU_CUSTOM1		0x82	/* 4 byte; For non-BRCM post-mfg additions */
 #define HNBU_CUSTOM2		0x83	/* Reserved; For non-BRCM post-mfg additions */
 #define HNBU_ACPAPARAM		0x84	/* ACPHY PAPARAM */
-#define HNBU_ACPA_CCK		0x86	/* ACPHY PA trimming parameters: CCK */
+#define HNBU_ACPA_CCK_C0	0x86	/* ACPHY PA trimming parameters: CCK */
 #define HNBU_ACPA_40		0x87	/* ACPHY PA trimming parameters: 40 */
 #define HNBU_ACPA_80		0x88	/* ACPHY PA trimming parameters: 80 */
 #define HNBU_ACPA_4080		0x89	/* ACPHY PA trimming parameters: 40/80 */
@@ -338,9 +369,42 @@
 
 #define HNBU_MCS5Gx1PO		0x8c
 #define HNBU_ACPPR_SB8080_PO		0x8d
+#define HNBU_TXBFRPCALS			0x8f	/* phy txbf rpcalvars */
+#define HNBU_MACADDR2				0x90	/* (optional) 2nd mac-addr for RSDB chips */
 
+#define HNBU_ACPA_4X4C0	0x91
+#define HNBU_ACPA_4X4C1	0x92
+#define HNBU_ACPA_4X4C2	0x93
+#define HNBU_ACPA_4X4C3	0x94
+#define HNBU_ACPA_BW20_4X4C0	0x95
+#define HNBU_ACPA_BW40_4X4C0	0x96
+#define HNBU_ACPA_BW80_4X4C0	0x97
+#define HNBU_ACPA_BW20_4X4C1	0x98
+#define HNBU_ACPA_BW40_4X4C1	0x99
+#define HNBU_ACPA_BW80_4X4C1	0x9a
+#define HNBU_ACPA_BW20_4X4C2	0x9b
+#define HNBU_ACPA_BW40_4X4C2	0x9c
+#define HNBU_ACPA_BW80_4X4C2	0x9d
+#define HNBU_ACPA_BW20_4X4C3	0x9e
+#define HNBU_ACPA_BW40_4X4C3	0x9f
+#define HNBU_ACPA_BW80_4X4C3	0xa0
+#define HNBU_ACPA_CCK_C1	0xa1	/* ACPHY PA trimming parameters: CCK */
 
-#endif /* !defined(LINUX_POSTMOGRIFY_REMOVAL) */
+#define HNBU_GAIN_CAL_TEMP          0xa2 /* RSSI Cal temperature parameter              */
+#define HNBU_RSSI_DELTA_2G_B0       0xa3 /* RSSI Cal parameter for 2G channel group 0   */
+#define HNBU_RSSI_DELTA_2G_B1       0xa4 /* RSSI Cal parameter for 2G channel group 1   */
+#define HNBU_RSSI_DELTA_2G_B2       0xa5 /* RSSI Cal parameter for 2G channel group 2   */
+#define HNBU_RSSI_DELTA_2G_B3       0xa6 /* RSSI Cal parameter for 2G channel group 3   */
+#define HNBU_RSSI_DELTA_2G_B4       0xa7 /* RSSI Cal parameter for 2G channel group 4   */
+#define HNBU_RSSI_CAL_FREQ_GRP_2G   0xa8 /* RSSI Cal parameter for channel group def.   */
+#define HNBU_RSSI_DELTA_5GL         0xa9 /* RSSI Cal parameter for 5G low channel       */
+#define HNBU_RSSI_DELTA_5GML        0xaa /* RSSI Cal parameter for 5G mid lower channel */
+#define HNBU_RSSI_DELTA_5GMU        0xab /* RSSI Cal parameter for 5G mid upper channel */
+#define HNBU_RSSI_DELTA_5GH         0xac /* RSSI Cal parameter for 5G high channel      */
+
+#define HNBU_ACPA_6G_C0         0xad /* paparams for 6G Core0 */
+#define HNBU_ACPA_6G_C1         0xae /* paparams for 6G Core1 */
+#define HNBU_ACPA_6G_C2         0xaf /* paparams for 6G Core2 */
 
 /* sbtmstatelow */
 #define SBTML_INT_ACK		0x40000		/* ack the sb interrupt */
@@ -348,5 +412,4 @@
 
 /* sbtmstatehigh */
 #define SBTMH_INT_STATUS	0x40000		/* sb interrupt status */
-
 #endif	/* _SBPCMCIA_H */

@@ -1,9 +1,27 @@
 /*
-* Customer code to add GPIO control during WLAN start/stop
-* $Copyright Open Broadcom Corporation$
-*
-* $Id: dhd_custom_gpio.c 493822 2014-07-29 13:20:26Z $
-*/
+ * Customer code to add GPIO control during WLAN start/stop
+ *
+ * Copyright (C) 2020, Broadcom.
+ *
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id$
+ */
 
 #include <typedefs.h>
 #include <linuxver.h>
@@ -14,28 +32,20 @@
 #include <dhd_linux.h>
 
 #include <wlioctl.h>
-#include <wl_iw.h>
 
+#ifndef BCMDONGLEHOST
+#include <wlc_pub.h>
+#include <wl_dbg.h>
+#else
 #define WL_ERROR(x) printf x
 #define WL_TRACE(x)
-
-#if defined(CUSTOMER_HW2)
-
-#if defined(PLATFORM_MPS)
-int __attribute__ ((weak)) wifi_get_fw_nv_path(char *fw, char *nv) { return 0;};
 #endif
 
-#endif 
-
-#if defined(OOB_INTR_ONLY)
+#if defined(OOB_INTR_ONLY) || defined(BCMSPI_ANDROID)
 
 #if defined(BCMLXSDMMC)
 extern int sdioh_mmc_irq(int irq);
 #endif /* (BCMLXSDMMC)  */
-
-#if defined(CUSTOMER_HW3) || defined(PLATFORM_MPS)
-#include <mach/gpio.h>
-#endif
 
 /* Customer specific Host GPIO defintion  */
 static int dhd_oob_gpio_num = -1;
@@ -58,7 +68,7 @@ int dhd_customer_oob_irq_map(void *adapter, unsigned long *irq_flags_ptr)
 {
 	int  host_oob_irq = 0;
 
-#if defined(CUSTOMER_HW2) && !defined(PLATFORM_MPS)
+#if defined(CUSTOMER_HW2) || defined(CUSTOMER_HW4) || defined(BOARD_HIKEY)
 	host_oob_irq = wifi_platform_get_irq_number(adapter, irq_flags_ptr);
 
 #else
@@ -77,16 +87,11 @@ int dhd_customer_oob_irq_map(void *adapter, unsigned long *irq_flags_ptr)
 	WL_ERROR(("%s: customer specific Host GPIO number is (%d)\n",
 	         __FUNCTION__, dhd_oob_gpio_num));
 
-#if defined CUSTOMER_HW3 || defined(PLATFORM_MPS)
-	gpio_request(dhd_oob_gpio_num, "oob irq");
-	host_oob_irq = gpio_to_irq(dhd_oob_gpio_num);
-	gpio_direction_input(dhd_oob_gpio_num);
-#endif /* defined CUSTOMER_HW3 || defined(PLATFORM_MPS) */
-#endif 
+#endif /* CUSTOMER_HW2 || CUSTOMER_HW4 || BOARD_HIKEY */
 
 	return (host_oob_irq);
 }
-#endif 
+#endif /* defined(OOB_INTR_ONLY) || defined(BCMSPI_ANDROID) */
 
 /* Customer function to control hw specific wlan gpios */
 int
@@ -97,7 +102,7 @@ dhd_customer_gpio_wlan_ctrl(void *adapter, int onoff)
 	return err;
 }
 
-#ifdef GET_CUSTOM_MAC_ENABLE
+#if 0
 /* Function to get custom MAC address */
 int
 dhd_custom_get_mac_address(void *adapter, unsigned char *buf)
@@ -109,8 +114,8 @@ dhd_custom_get_mac_address(void *adapter, unsigned char *buf)
 		return -EINVAL;
 
 	/* Customer access to MAC address stored outside of DHD driver */
-#if (defined(CUSTOMER_HW2) || defined(CUSTOMER_HW10)) && (LINUX_VERSION_CODE >= \
-	KERNEL_VERSION(2, 6, 35))
+#if (defined(CUSTOMER_HW2) || defined(CUSTOMER_HW10) || defined(BOARD_HIKEY)) && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	ret = wifi_platform_get_mac_addr(adapter, buf);
 #endif
 
@@ -126,6 +131,7 @@ dhd_custom_get_mac_address(void *adapter, unsigned char *buf)
 }
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
+#ifndef CUSTOMER_HW4
 /* Customized Locale table : OPTIONAL feature */
 const struct cntry_locales_custom translate_custom_table[] = {
 /* Table should be filled out based on custom platform regulatory requirement */
@@ -173,7 +179,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"TR", "TR", 0},
 	{"NO", "NO", 0},
 #endif /* EXMAPLE_TABLE */
-#if defined(CUSTOMER_HW2) && !defined(CUSTOMER_HW5)
+#if (defined(CUSTOMER_HW2) || defined(BOARD_HIKEY)) && !defined(CUSTOMER_HW5)
 #if defined(BCM4335_CHIP)
 	{"",   "XZ", 11},  /* Universal if Country code is unknown or empty */
 #endif
@@ -230,11 +236,6 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"PS", "XZ", 11},	/* Universal if Country code is PALESTINIAN TERRITORY, OCCUPIED */
 	{"TL", "XZ", 11},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
 	{"MH", "XZ", 11},	/* Universal if Country code is MARSHALL ISLANDS */
-#ifdef BCM4330_CHIP
-	{"RU", "RU", 1},
-	{"US", "US", 5}
-#endif
-
 #elif defined(CUSTOMER_HW5)
 	{"",   "XZ", 11},
 	{"AE", "AE", 212},
@@ -370,24 +371,34 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"XZ", "XZ", 11},
 	{"XV", "XV", 17},
 	{"Q1", "Q1", 77},
-#endif /* CUSTOMER_HW2 and  CUSTOMER_HW5 */
+#endif /* (CUSTOMER_HW2 || BOARD_HIKEY) &&  CUSTOMER_HW5 */
 };
-
 
 /* Customized Locale convertor
 *  input : ISO 3166-1 country abbreviation
 *  output: customized cspec
 */
-void get_customized_country_code(void *adapter, char *country_iso_code, wl_country_t *cspec)
+void
+#ifdef CUSTOM_COUNTRY_CODE
+get_customized_country_code(void *adapter, char *country_iso_code,
+	wl_country_t *cspec, u32 flags)
+#else
+get_customized_country_code(void *adapter, char *country_iso_code, wl_country_t *cspec)
+#endif /* CUSTOM_COUNTRY_CODE */
 {
+#if defined(OEM_ANDROID)
 #if (defined(CUSTOMER_HW) || defined(CUSTOMER_HW2)) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
 
 	struct cntry_locales_custom *cloc_ptr;
 
 	if (!cspec)
 		return;
-
+#ifdef CUSTOM_COUNTRY_CODE
+	cloc_ptr = wifi_platform_get_country_code(adapter, country_iso_code, flags);
+#else
 	cloc_ptr = wifi_platform_get_country_code(adapter, country_iso_code);
+#endif /* CUSTOM_COUNTRY_CODE */
+
 	if (cloc_ptr) {
 		strlcpy(cspec->ccode, cloc_ptr->custom_locale, WLC_CNTRY_BUF_SZ);
 		cspec->rev = cloc_ptr->custom_locale_rev;
@@ -418,5 +429,9 @@ void get_customized_country_code(void *adapter, char *country_iso_code, wl_count
 	cspec->rev = translate_custom_table[0].custom_locale_rev;
 #endif /* EXMAPLE_TABLE */
 	return;
-#endif /* defined(CUSTOMER_HW2) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)) */
+#endif /* (defined(CUSTOMER_HW2) || defined(BOARD_HIKEY)) &&
+	* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36))
+	*/
+#endif /* OEM_ANDROID */
 }
+#endif /* !CUSTOMER_HW4 */

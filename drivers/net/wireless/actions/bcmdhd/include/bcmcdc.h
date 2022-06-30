@@ -4,13 +4,28 @@
  *
  * Definitions subject to change without notice.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 2020, Broadcom.
  *
- * $Id: bcmcdc.h 318308 2012-03-02 02:23:42Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Dual:>>
  */
 #ifndef _bcmcdc_h_
 #define	_bcmcdc_h_
-#include <proto/ethernet.h>
+#include <ethernet.h>
 
 typedef struct cdc_ioctl {
 	uint32 cmd;      /* ioctl command value */
@@ -68,6 +83,7 @@ struct bdc_header {
 #define	BDC_HEADER_LEN		4
 
 /* flags field bitmap */
+#define BDC_FLAG_EXEMPT		0x03	/* EXT_STA: encryption exemption (host -> dongle?) */
 #define BDC_FLAG_80211_PKT	0x01	/* Packet is in 802.11 format (dongle -> host) */
 #define BDC_FLAG_SUM_GOOD	0x04	/* Dongle has verified good RX checksums */
 #define BDC_FLAG_SUM_NEEDED	0x08	/* Dongle needs to do TX checksums: host->device */
@@ -95,20 +111,5 @@ struct bdc_header {
 	((int)((((hdr)->flags2) & BDC_FLAG2_IF_MASK) >> BDC_FLAG2_IF_SHIFT))
 #define BDC_SET_IF_IDX(hdr, idx) \
 	((hdr)->flags2 = (((hdr)->flags2 & ~BDC_FLAG2_IF_MASK) | ((idx) << BDC_FLAG2_IF_SHIFT)))
-
-#define BDC_FLAG2_PAD_MASK		0xf0
-#define BDC_FLAG_PAD_MASK		0x03
-#define BDC_FLAG2_PAD_SHIFT		2
-#define BDC_FLAG_PAD_SHIFT		0
-#define BDC_FLAG2_PAD_IDX		0x3c
-#define BDC_FLAG_PAD_IDX		0x03
-#define BDC_GET_PAD_LEN(hdr) \
-	((int)(((((hdr)->flags2) & BDC_FLAG2_PAD_MASK) >> BDC_FLAG2_PAD_SHIFT) | \
-	((((hdr)->flags) & BDC_FLAG_PAD_MASK) >> BDC_FLAG_PAD_SHIFT)))
-#define BDC_SET_PAD_LEN(hdr, idx) \
-	((hdr)->flags2 = (((hdr)->flags2 & ~BDC_FLAG2_PAD_MASK) | \
-	(((idx) & BDC_FLAG2_PAD_IDX) << BDC_FLAG2_PAD_SHIFT))); \
-	((hdr)->flags = (((hdr)->flags & ~BDC_FLAG_PAD_MASK) | \
-	(((idx) & BDC_FLAG_PAD_IDX) << BDC_FLAG_PAD_SHIFT)))
 
 #endif /* _bcmcdc_h_ */

@@ -1,10 +1,29 @@
 /*
- * $Copyright Open Broadcom Corporation$
- * $Id: typedefs.h 484281 2014-06-12 22:42:26Z $
+ * Copyright (C) 2020, Broadcom.
+ *
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Dual:>>
  */
 
 #ifndef _TYPEDEFS_H_
 #define _TYPEDEFS_H_
+
+#if (!defined(EDK_RELEASE_VERSION) || (EDK_RELEASE_VERSION < 0x00020000)) || \
+		!defined(BWL_NO_INTERNAL_STDLIB_SUPPORT)
 
 #ifdef SITE_TYPEDEFS
 
@@ -44,30 +63,59 @@
 
 #else	/* ! __cplusplus */
 
+#if defined(_WIN32)
+
+#define TYPEDEF_BOOL
+typedef	unsigned char	bool;			/* consistent w/BOOL */
+
+#endif /* _WIN32 */
 
 #endif	/* ! __cplusplus */
 
-#if defined(__LP64__)
+#if defined(EFI) && !defined(EFI_WINBLD) && !defined(__size_t__)
+typedef long unsigned int size_t;
+#endif /* EFI */
+
+#if !defined(TYPEDEF_UINTPTR)
+#if defined(_WIN64) && !defined(EFI)
+/* use the Windows ULONG_PTR type when compiling for 64 bit */
+#include <basetsd.h>
+#define TYPEDEF_UINTPTR
+typedef ULONG_PTR uintptr;
+#elif defined(__LP64__)
 #define TYPEDEF_UINTPTR
 typedef unsigned long long int uintptr;
 #endif
+#endif /* TYPEDEF_UINTPTR */
 
+#if defined(_RTE_)
+#define _NEED_SIZE_T_
+#endif
 
+/* float_t types conflict with the same typedefs from the standard ANSI-C
+** math.h header file. Don't re-typedef them here.
+*/
 
-
+#if defined(MACOSX)
+#define TYPEDEF_FLOAT_T
+#endif /* MACOSX */
 
 #if defined(_NEED_SIZE_T_)
 typedef long unsigned int size_t;
 #endif
 
-
-
-
+#ifdef _MSC_VER	/* Microsoft C */
+#define TYPEDEF_INT64
+#define TYPEDEF_UINT64
+typedef signed __int64	int64;
+typedef unsigned __int64 uint64;
+#endif
 
 #if defined(__sparc__)
 #define TYPEDEF_ULONG
 #endif
 
+#if defined(__linux__) && !defined(EFI)
 /*
  * If this is either a Linux hybrid build or the per-port code of a hybrid build
  * then use the Linux header files to get some of the typedefs.  Otherwise, define
@@ -75,7 +123,6 @@ typedef long unsigned int size_t;
  * a duplicate typedef error; there is no way to "undefine" a typedef.
  * We know when it's per-port code because each file defines LINUX_PORT at the top.
  */
-#if !defined(LINUX_HYBRID) || defined(LINUX_PORT)
 #define TYPEDEF_UINT
 #ifndef TARGETENV_android
 #define TYPEDEF_USHORT
@@ -94,8 +141,14 @@ typedef long unsigned int size_t;
 #endif
 #endif	/* == 2.6.18 */
 #endif	/* __KERNEL__ */
-#endif  /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
+#endif	/* linux && !EFI */
 
+#if !defined(__linux__) && !defined(_WIN32) && \
+	!defined(_RTE_) && !defined(__DJGPP__) && \
+	!defined(__BOB__) && !defined(EFI)
+#define TYPEDEF_UINT
+#define TYPEDEF_USHORT
+#endif
 
 /* Do not support the (u)int64 types with strict ansi for GNU C */
 #if defined(__GNUC__) && defined(__STRICT_ANSI__)
@@ -116,15 +169,18 @@ typedef long unsigned int size_t;
 
 #endif /* __ICL */
 
-#if !defined(__DJGPP__)
+#if !defined(_WIN32) && !defined(_RTE_) && \
+	!defined(__DJGPP__) && !defined(__BOB__) && !defined(EFI)
 
 /* pick up ushort & uint from standard types.h */
-#if defined(__KERNEL__)
+#if defined(__linux__) && defined(__KERNEL__)
 
 /* See note above */
-#if !defined(LINUX_HYBRID) || defined(LINUX_PORT)
+#ifdef USER_MODE
+#include <sys/types.h>
+#else
 #include <linux/types.h>	/* sys/types.h and linux/types.h are oil and water */
-#endif /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
+#endif /* USER_MODE */
 
 #else
 
@@ -132,14 +188,12 @@ typedef long unsigned int size_t;
 
 #endif /* linux && __KERNEL__ */
 
-#endif 
-
+#endif /* !_WIN32 && !_RTE_  && !__DJGPP__ */
 
 /* use the default typedefs in the next section of this file */
 #define USE_TYPEDEF_DEFAULTS
 
 #endif /* SITE_TYPEDEFS */
-
 
 /*
  * Default Typedefs
@@ -264,27 +318,27 @@ typedef float64 float_t;
 #define	PTRSZ	sizeof(char*)
 #endif
 
-
 /* Detect compiler type. */
-#if defined(__GNUC__) || defined(__lint)
+#ifdef _MSC_VER
+	#define BWL_COMPILER_MICROSOFT
+#elif defined(__GNUC__) || defined(__lint)
 	#define BWL_COMPILER_GNU
 #elif defined(__CC_ARM) && __CC_ARM
 	#define BWL_COMPILER_ARMCC
 #else
 	#error "Unknown compiler!"
-#endif 
-
+#endif /* _MSC_VER */
 
 #ifndef INLINE
-	#if defined(BWL_COMPILER_MICROSOFT)
-		#define INLINE __inline
-	#elif defined(BWL_COMPILER_GNU)
-		#define INLINE __inline__
-	#elif defined(BWL_COMPILER_ARMCC)
-		#define INLINE	__inline
-	#else
-		#define INLINE
-	#endif 
+#if defined(BWL_COMPILER_MICROSOFT)
+	#define INLINE __inline
+#elif defined(BWL_COMPILER_GNU)
+	#define INLINE __inline__
+#elif defined(BWL_COMPILER_ARMCC)
+	#define INLINE	__inline
+#else
+	#define INLINE
+#endif /* _MSC_VER */
 #endif /* INLINE */
 
 #undef TYPEDEF_BOOL
@@ -312,6 +366,39 @@ typedef float64 float_t;
 
 /* Avoid warning for discarded const or volatile qualifier in special cases (-Wcast-qual) */
 #define DISCARD_QUAL(ptr, type) ((type *)(uintptr)(ptr))
+
+#else /* !EDK_RELEASE_VERSION || (EDK_RELEASE_VERSION < 0x00020000) */
+
+#include <sys/types.h>
+#include <strings.h>
+#include <stdlib.h>
+
+#ifdef stderr
+#undef stderr
+#define stderr stdout
+#endif
+
+typedef UINT8   uint8;
+typedef UINT16  uint16;
+typedef UINT32  uint32;
+typedef UINT64  uint64;
+typedef INT8    int8;
+typedef INT16   int16;
+typedef INT32   int32;
+typedef INT64   int64;
+
+typedef BOOLEAN       bool;
+typedef unsigned char uchar;
+typedef UINTN         uintptr;
+
+#define UNUSED_PARAMETER(x) (void)(x)
+#define DISCARD_QUAL(ptr, type) ((type *)(uintptr)(ptr))
+#define INLINE
+#define	AUTO	(-1) /* Auto = -1 */
+#define	ON	1  /* ON = 1 */
+#define	OFF	0
+
+#endif /* !EDK_RELEASE_VERSION || (EDK_RELEASE_VERSION < 0x00020000) */
 
 /*
  * Including the bcmdefs.h here, to make sure everyone including typedefs.h

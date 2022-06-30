@@ -2,9 +2,24 @@
  * Broadcom SDIO/PCMCIA
  * Software-specific definitions shared between device and host side
  *
- * $Copyright Open 2005 Broadcom Corporation$
+ * Copyright (C) 2020, Broadcom.
  *
- * $Id: bcmsdpcm.h 472405 2014-04-23 23:46:55Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Dual:>>
  */
 
 #ifndef	_bcmsdpcm_h_
@@ -30,6 +45,16 @@
 #define SMB_MASK	0x0000000f	/* To SB Mailbox Mask */
 
 /* tosbmailboxdata */
+
+#ifdef DS_PROT
+/* Bit msgs for custom deep sleep protocol */
+#define SMB_DATA_D3INFORM	0x100	/* host announcing D3 entry */
+#define SMB_DATA_DSACK		0x200	/* host acking a deepsleep request */
+#define SMB_DATA_DSNACK		0x400	/* host nacking a deepsleep request */
+#endif /* DS_PROT */
+/* force a trap */
+#define SMB_DATA_TRAP		0x800	/* host forcing trap */
+
 #define SMB_DATA_VERSION_MASK	0x00ff0000	/* host protocol version (sent with F2 enable) */
 #define SMB_DATA_VERSION_SHIFT	16		/* host protocol version (sent with F2 enable) */
 
@@ -38,16 +63,16 @@
  */
 
 /* intstatus bits */
+#define I_HMB_INT_ACK	I_HMB_SW0	/* To Host Mailbox Dev Interrupt ACK */
 #define I_HMB_FC_STATE	I_HMB_SW0	/* To Host Mailbox Flow Control State */
 #define I_HMB_FC_CHANGE	I_HMB_SW1	/* To Host Mailbox Flow Control State Changed */
 #define I_HMB_FRAME_IND	I_HMB_SW2	/* To Host Mailbox Frame Indication */
 #define I_HMB_HOST_INT	I_HMB_SW3	/* To Host Mailbox Miscellaneous Interrupt */
 
-#define I_TOHOSTMAIL    (I_HMB_FC_CHANGE | I_HMB_FRAME_IND | I_HMB_HOST_INT)
+#define I_TOHOSTMAIL    (I_HMB_INT_ACK | I_HMB_FRAME_IND | I_HMB_HOST_INT)
 
 /* tohostmailbox bits corresponding to intstatus bits */
-#define HMB_FC_ON	(1 << 0)	/* To Host Mailbox Flow Control State */
-#define HMB_FC_CHANGE	(1 << 1)	/* To Host Mailbox Flow Control State Changed */
+#define HMB_INT_ACK	(1 << 0)	/* To Host Mailbox Dev Interrupt ACK */
 #define HMB_FRAME_IND	(1 << 2)	/* To Host Mailbox Frame Indication */
 #define HMB_HOST_INT	(1 << 3)	/* To Host Mailbox Miscellaneous Interrupt */
 #define HMB_MASK	0x0000000f	/* To Host Mailbox Mask */
@@ -59,6 +84,15 @@
 #define HMB_DATA_FWREADY	0x08	/* firmware is ready for protocol activity */
 #define HMB_DATA_FWHALT		0x10	/* firmware has halted operation */
 
+#ifdef DS_PROT
+/* Bit msgs for custom deep sleep protocol */
+#define HMB_DATA_DSREQ		0x100	/* firmware requesting deepsleep entry */
+#define HMB_DATA_DSEXIT		0x200	/* firmware announcing deepsleep exit */
+#define HMB_DATA_D3ACK		0x400	/* firmware acking a D3 notice from host */
+#define HMB_DATA_D3EXIT		0x800	/* firmware announcing D3 exit */
+#define HMB_DATA_DSPROT_MASK	0xf00
+#endif /* DS_PROT */
+
 #define HMB_DATA_FCDATA_MASK	0xff000000	/* per prio flowcontrol data */
 #define HMB_DATA_FCDATA_SHIFT	24		/* per prio flowcontrol data */
 
@@ -68,6 +102,7 @@
 /*
  * Software-defined protocol header
  */
+/* Replace all this with packed struct */
 
 /* Current protocol version */
 #define SDPCM_PROT_VERSION	4
@@ -92,7 +127,7 @@
 
 /* Data Offset from SOF (HW Tag, SW Tag, Pad) */
 #define SDPCM_DOFFSET_OFFSET		3		/* Data Offset */
-#define SDPCM_DOFFSET_VALUE(p) 		(((uint8 *)p)[SDPCM_DOFFSET_OFFSET] & 0xff)
+#define SDPCM_DOFFSET_VALUE(p)		(((uint8 *)p)[SDPCM_DOFFSET_OFFSET] & 0xff)
 #define SDPCM_DOFFSET_MASK		0xff000000
 #define SDPCM_DOFFSET_SHIFT		24
 
@@ -119,7 +154,7 @@
 
 #define SDPCM_FLAG_RESVD0	0x01
 #define SDPCM_FLAG_RESVD1	0x02
-#define SDPCM_FLAG_GSPI_TXENAB	0x04
+#define SDPCM_FLAG_GSPI_TXENAB	0x04	/* GSPI Tx enable (PR55150 only) */
 #define SDPCM_FLAG_GLOMDESC	0x08	/* Superframe descriptor mask */
 
 /* For GLOM_CHANNEL frames, use a flag to indicate descriptor frame */
@@ -243,6 +278,9 @@ typedef volatile struct {
 #define SDPCM_SHARED_IN_BRPT       0x0800
 #define SDPCM_SHARED_SET_BRPT      0x1000
 #define SDPCM_SHARED_PENDING_BRPT  0x2000
+#define SDPCM_SHARED_FATAL_LOGBUF_VALID	0x100000
+#define SDPCM_SHARED_RXLIM_POST    0x4000
+#define SDPCM_SHARED_TXSEQ_SYNC    0x4000
 
 typedef struct {
 	uint32	flags;
@@ -253,8 +291,14 @@ typedef struct {
 	uint32	console_addr;		/* Address of hnd_cons_t */
 	uint32  msgtrace_addr;
 	uint32  fwid;
+	uint32  device_fatal_logbuf_start;
+#ifdef BCMSDIO_TXSEQ_SYNC
+	uint32	txseq_sync_addr;
+#endif /* BCMSDIO_TXSEQ_SYNC */
 } sdpcm_shared_t;
 
-extern sdpcm_shared_t sdpcm_shared;
+/* Device F/W provides the following access function:
+ * sdpcm_shared_t *hnd_get_sdpcm_shared(void);
+ */
 
 #endif	/* _bcmsdpcm_h_ */
