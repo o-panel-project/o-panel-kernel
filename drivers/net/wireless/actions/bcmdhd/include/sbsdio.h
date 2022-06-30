@@ -4,9 +4,24 @@
  *
  * SDIO core support 1bit, 4 bit SDIO mode as well as SPI mode.
  *
- * $Copyright Open 2003 Broadcom Corporation$
+ * Copyright (C) 2020, Broadcom.
  *
- * $Id: sbsdio.h 383835 2013-02-07 23:32:39Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Dual:>>
  */
 
 #ifndef	_SBSDIO_H
@@ -68,11 +83,6 @@
 #define SROM_BLANK			0x04		/* depreciated in corerev 6 */
 #define	SROM_OTP			0x80		/* OTP present */
 
-/* SBSDIO_CHIP_CTRL */
-#define SBSDIO_CHIP_CTRL_XTAL		0x01		/* or'd with onchip xtal_pu,
-							 * 1: power on oscillator
-							 * (for 4318 only)
-							 */
 /* SBSDIO_WATERMARK */
 #define SBSDIO_WATERMARK_MASK		0x7f		/* number of words - 1 for sd device
 							 * to wait before sending data to host
@@ -117,6 +127,9 @@
 #define SBSDIO_Rev8_ALP_AVAIL		0x80
 #define SBSDIO_CSR_MASK			0x1F
 
+/* WAR for PR 40695: determine HT/ALP regardless of actual bit order.  Need to use
+ * before we know corerev.  (Can drop if all supported revs have same bit order.)
+ */
 #define SBSDIO_AVBITS			(SBSDIO_HT_AVAIL | SBSDIO_ALP_AVAIL)
 #define SBSDIO_ALPAV(regval)		((regval) & SBSDIO_AVBITS)
 #define SBSDIO_HTAV(regval)		(((regval) & SBSDIO_AVBITS) == SBSDIO_AVBITS)
@@ -145,7 +158,11 @@
 
 /* direct(mapped) cis space */
 #define SBSDIO_CIS_BASE_COMMON		0x1000		/* MAPPED common CIS address */
+#ifdef BCMSPI
+#define SBSDIO_CIS_SIZE_LIMIT		0x100		/* maximum bytes in one spi CIS */
+#else
 #define SBSDIO_CIS_SIZE_LIMIT		0x200		/* maximum bytes in one CIS */
+#endif /* !BCMSPI */
 #define SBSDIO_OTP_CIS_SIZE_LIMIT       0x078           /* maximum bytes OTP CIS */
 
 #define SBSDIO_CIS_OFT_ADDR_MASK	0x1FFFF		/* cis offset addr is < 17 bits */

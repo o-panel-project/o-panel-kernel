@@ -1,28 +1,46 @@
 /*
  * IP Packet Parser Module.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 2020, Broadcom.
  *
- * $Id: dhd_ip.c 502735 2014-09-16 00:53:02Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id$
  */
 #include <typedefs.h>
 #include <osl.h>
 
-#include <proto/ethernet.h>
-#include <proto/vlan.h>
-#include <proto/802.3.h>
-#include <proto/bcmip.h>
+#include <ethernet.h>
+#include <vlan.h>
+#include <802.3.h>
+#include <bcmip.h>
 #include <bcmendian.h>
 
 #include <dhd_dbg.h>
 
 #include <dhd_ip.h>
+#include <dhd_config.h>
 
-#ifdef DHDTCPACK_SUPPRESS
+#if defined(DHDTCPACK_SUPPRESS) || defined(DHDTCPSYNC_FLOOD_BLK)
 #include <dhd_bus.h>
 #include <dhd_proto.h>
-#include <proto/bcmtcp.h>
-#endif /* DHDTCPACK_SUPPRESS */
+#include <bcmtcp.h>
+#endif /* DHDTCPACK_SUPPRESS || DHDTCPSYNC_FLOOD_BLK */
 
 /* special values */
 /* 802.3 llc/snap header */
@@ -98,70 +116,6 @@ pkt_frag_t pkt_frag_info(osl_t *osh, void *p)
 	}
 }
 
-bool pkt_is_dhcp(osl_t *osh, void *p)
-{
-	uint8 *frame;
-	int length;
-	uint8 *pt;			/* Pointer to type field */
-	uint16 ethertype;
-	struct ipv4_hdr *iph;		/* IP frame pointer */
-	int ipl;			/* IP frame length */
-	uint16 src_port;
-
-	ASSERT(osh && p);
-
-	frame = PKTDATA(osh, p);
-	length = PKTLEN(osh, p);
-
-	/* Process Ethernet II or SNAP-encapsulated 802.3 frames */
-	if (length < ETHER_HDR_LEN) {
-		DHD_INFO(("%s: short eth frame (%d)\n", __FUNCTION__, length));
-		return FALSE;
-	} else if (ntoh16(*(uint16 *)(frame + ETHER_TYPE_OFFSET)) >= ETHER_TYPE_MIN) {
-		/* Frame is Ethernet II */
-		pt = frame + ETHER_TYPE_OFFSET;
-	} else if (length >= ETHER_HDR_LEN + SNAP_HDR_LEN + ETHER_TYPE_LEN &&
-	           !bcmp(llc_snap_hdr, frame + ETHER_HDR_LEN, SNAP_HDR_LEN)) {
-		pt = frame + ETHER_HDR_LEN + SNAP_HDR_LEN;
-	} else {
-		DHD_INFO(("%s: non-SNAP 802.3 frame\n", __FUNCTION__));
-		return FALSE;
-	}
-
-	ethertype = ntoh16(*(uint16 *)pt);
-
-	/* Skip VLAN tag, if any */
-	if (ethertype == ETHER_TYPE_8021Q) {
-		pt += VLAN_TAG_LEN;
-
-		if (pt + ETHER_TYPE_LEN > frame + length) {
-			DHD_INFO(("%s: short VLAN frame (%d)\n", __FUNCTION__, length));
-			return FALSE;
-		}
-
-		ethertype = ntoh16(*(uint16 *)pt);
-	}
-
-	if (ethertype != ETHER_TYPE_IP) {
-		DHD_INFO(("%s: non-IP frame (ethertype 0x%x, length %d)\n",
-			__FUNCTION__, ethertype, length));
-		return FALSE;
-	}
-
-	iph = (struct ipv4_hdr *)(pt + ETHER_TYPE_LEN);
-	ipl = (uint)(length - (pt + ETHER_TYPE_LEN - frame));
-
-	/* We support IPv4 only */
-	if ((ipl < (IPV4_OPTIONS_OFFSET + 2)) || (IP_VER(iph) != IP_VER_4)) {
-		DHD_INFO(("%s: short frame (%d) or non-IPv4\n", __FUNCTION__, ipl));
-		return FALSE;
-	}
-
-	src_port = ntoh16(*(uint16 *)(pt + ETHER_TYPE_LEN + IPV4_OPTIONS_OFFSET));
-
-	return (src_port == 0x43 || src_port == 0x44);
-}
-
 #ifdef DHDTCPACK_SUPPRESS
 
 typedef struct {
@@ -170,7 +124,11 @@ typedef struct {
 	int ifidx;
 	uint8 supp_cnt;
 	dhd_pub_t *dhdp;
-	struct timer_list timer;
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
+	timer_list_compat_t timer;
+#else
+	struct tasklet_hrtimer timer;
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
 } tcpack_info_t;
 
 typedef struct _tdata_psh_info_t {
@@ -179,10 +137,14 @@ typedef struct _tdata_psh_info_t {
 } tdata_psh_info_t;
 
 typedef struct {
-	uint8 src_ip_addr[IPV4_ADDR_LEN];	/* SRC ip addrs of this TCP stream */
-	uint8 dst_ip_addr[IPV4_ADDR_LEN];	/* DST ip addrs of this TCP stream */
-	uint8 src_tcp_port[TCP_PORT_LEN];	/* SRC tcp ports of this TCP stream */
-	uint8 dst_tcp_port[TCP_PORT_LEN];	/* DST tcp ports of this TCP stream */
+	struct {
+		uint8 src[IPV4_ADDR_LEN];	/* SRC ip addrs of this TCP stream */
+		uint8 dst[IPV4_ADDR_LEN];	/* DST ip addrs of this TCP stream */
+	} ip_addr;
+	struct {
+		uint8 src[TCP_PORT_LEN];	/* SRC tcp ports of this TCP stream */
+		uint8 dst[TCP_PORT_LEN];	/* DST tcp ports of this TCP stream */
+	} tcp_port;
 	tdata_psh_info_t *tdata_psh_info_head;	/* Head of received TCP PSH DATA chain */
 	tdata_psh_info_t *tdata_psh_info_tail;	/* Tail of received TCP PSH DATA chain */
 	uint32 last_used_time;	/* The last time this tcpdata_info was used(in ms) */
@@ -248,6 +210,7 @@ _tdata_psh_info_pool_deq(tcpack_sup_module_t *tcpack_sup_mod)
 	return tdata_psh_info;
 }
 
+#ifdef BCMSDIO
 static int _tdata_psh_info_pool_init(dhd_pub_t *dhdp,
 	tcpack_sup_module_t *tcpack_sup_mod)
 {
@@ -321,36 +284,59 @@ static void _tdata_psh_info_pool_deinit(dhd_pub_t *dhdp,
 	ASSERT(i == TCPDATA_PSH_INFO_MAXNUM);
 	MFREE(dhdp->osh, tcpack_sup_mod->tdata_psh_info_pool,
 		sizeof(tdata_psh_info_t) * TCPDATA_PSH_INFO_MAXNUM);
-	tcpack_sup_mod->tdata_psh_info_pool = NULL;
 
 	return;
 }
+#endif /* BCMSDIO */
 
+#ifdef BCMPCIE
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
 static void dhd_tcpack_send(ulong data)
+#else
+static enum hrtimer_restart dhd_tcpack_send(struct hrtimer *timer)
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
 {
 	tcpack_sup_module_t *tcpack_sup_mod;
-	tcpack_info_t *cur_tbl = (tcpack_info_t *)data;
+	tcpack_info_t *cur_tbl;
 	dhd_pub_t *dhdp;
 	int ifidx;
 	void* pkt;
+	unsigned long flags;
+
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
+	cur_tbl = (tcpack_info_t *)data;
+#else
+	cur_tbl = container_of(timer, tcpack_info_t, timer.timer);
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
 
 	if (!cur_tbl) {
-		return;
+		goto done;
 	}
 
 	dhdp = cur_tbl->dhdp;
 	if (!dhdp) {
-		return;
+		goto done;
 	}
 
-	dhd_os_tcpacklock(dhdp);
+	flags = dhd_os_tcpacklock(dhdp);
+
+	if (unlikely(dhdp->tcpack_sup_mode != TCPACK_SUP_HOLD)) {
+		dhd_os_tcpackunlock(dhdp, flags);
+		goto done;
+	}
 
 	tcpack_sup_mod = dhdp->tcpack_sup_module;
+	if (!tcpack_sup_mod) {
+		DHD_ERROR(("%s %d: tcpack suppress module NULL!!\n",
+			__FUNCTION__, __LINE__));
+		dhd_os_tcpackunlock(dhdp, flags);
+		goto done;
+	}
 	pkt = cur_tbl->pkt_in_q;
 	ifidx = cur_tbl->ifidx;
 	if (!pkt) {
-		dhd_os_tcpackunlock(dhdp);
-		return;
+		dhd_os_tcpackunlock(dhdp, flags);
+		goto done;
 	}
 	cur_tbl->pkt_in_q = NULL;
 	cur_tbl->pkt_ether_hdr = NULL;
@@ -361,96 +347,173 @@ static void dhd_tcpack_send(ulong data)
 			__FUNCTION__, __LINE__, tcpack_sup_mod->tcpack_info_cnt));
 	}
 
-	dhd_os_tcpackunlock(dhdp);
+	dhd_os_tcpackunlock(dhdp, flags);
 
 	dhd_sendpkt(dhdp, ifidx, pkt);
+
+done:
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
+	return;
+#else
+	return HRTIMER_NORESTART;
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
 }
+#endif /* BCMPCIE */
 
 int dhd_tcpack_suppress_set(dhd_pub_t *dhdp, uint8 mode)
 {
 	int ret = BCME_OK;
+	unsigned long flags;
+	tcpack_sup_module_t *tcpack_sup_module;
+	uint8 invalid_mode = FALSE;
+	int prev_mode;
+	int i = 0;
 
-	dhd_os_tcpacklock(dhdp);
+	flags = dhd_os_tcpacklock(dhdp);
+	tcpack_sup_module = dhdp->tcpack_sup_module;
+	prev_mode = dhdp->tcpack_sup_mode;
 
-	if (dhdp->tcpack_sup_mode == mode) {
+	if (prev_mode == mode) {
 		DHD_ERROR(("%s %d: already set to %d\n", __FUNCTION__, __LINE__, mode));
 		goto exit;
 	}
 
-	if (mode >= TCPACK_SUP_LAST_MODE ||
-#ifndef BCMSDIO
-		mode == TCPACK_SUP_DELAYTX ||
-#endif
-		FALSE) {
-		DHD_ERROR(("%s %d: Invalid mode %d\n", __FUNCTION__, __LINE__, mode));
+	invalid_mode |= (mode >= TCPACK_SUP_LAST_MODE);
+#ifdef BCMSDIO
+	invalid_mode |= (mode == TCPACK_SUP_HOLD);
+#endif /* BCMSDIO */
+#ifdef BCMPCIE
+	invalid_mode |= ((mode == TCPACK_SUP_REPLACE) || (mode == TCPACK_SUP_DELAYTX));
+#endif /* BCMPCIE */
+
+	if (invalid_mode) {
+		DHD_ERROR(("%s %d: Invalid TCP ACK Suppress mode %d\n",
+			__FUNCTION__, __LINE__, mode));
 		ret = BCME_BADARG;
 		goto exit;
 	}
 
-	DHD_TRACE(("%s: %d -> %d\n",
-		__FUNCTION__, dhdp->tcpack_sup_mode, mode));
+	printf("%s: TCP ACK Suppress mode %d -> mode %d\n",
+		__FUNCTION__, dhdp->tcpack_sup_mode, mode);
+	printf("%s: TCPACK_INFO_MAXNUM=%d, TCPDATA_INFO_MAXNUM=%d\n",
+		__FUNCTION__, TCPACK_INFO_MAXNUM, TCPDATA_INFO_MAXNUM);
 
-	/* Old tcpack_sup_mode is TCPACK_SUP_DELAYTX */
-	if (dhdp->tcpack_sup_mode == TCPACK_SUP_DELAYTX) {
-		tcpack_sup_module_t *tcpack_sup_mod = dhdp->tcpack_sup_module;
-		/* We won't need tdata_psh_info pool and tcpddata_info_tbl anymore */
-		_tdata_psh_info_pool_deinit(dhdp, tcpack_sup_mod);
-		tcpack_sup_mod->tcpdata_info_cnt = 0;
-		bzero(tcpack_sup_mod->tcpdata_info_tbl,
-			sizeof(tcpdata_info_t) * TCPDATA_INFO_MAXNUM);
-		/* For half duplex bus interface, tx precedes rx by default */
-		if (dhdp->bus)
-			dhd_bus_set_dotxinrx(dhdp->bus, TRUE);
+	/* Pre-process routines to change a new mode as per previous mode */
+	switch (prev_mode) {
+		case TCPACK_SUP_OFF:
+			if (tcpack_sup_module == NULL) {
+				tcpack_sup_module = MALLOC(dhdp->osh, sizeof(tcpack_sup_module_t));
+				if (tcpack_sup_module == NULL) {
+					DHD_ERROR(("%s[%d]: Failed to allocate the new memory for "
+						"tcpack_sup_module\n", __FUNCTION__, __LINE__));
+					dhdp->tcpack_sup_mode = TCPACK_SUP_OFF;
+					ret = BCME_NOMEM;
+					goto exit;
+				}
+				dhdp->tcpack_sup_module = tcpack_sup_module;
+			}
+			bzero(tcpack_sup_module, sizeof(tcpack_sup_module_t));
+			break;
+#ifdef BCMSDIO
+		case TCPACK_SUP_DELAYTX:
+			if (tcpack_sup_module) {
+				/* We won't need tdata_psh_info pool and
+				 * tcpddata_info_tbl anymore
+				 */
+				_tdata_psh_info_pool_deinit(dhdp, tcpack_sup_module);
+				tcpack_sup_module->tcpdata_info_cnt = 0;
+				bzero(tcpack_sup_module->tcpdata_info_tbl,
+					sizeof(tcpdata_info_t) * TCPDATA_INFO_MAXNUM);
+			}
+
+			/* For half duplex bus interface, tx precedes rx by default */
+			if (dhdp->bus) {
+				dhd_bus_set_dotxinrx(dhdp->bus, TRUE);
+			}
+
+			if (tcpack_sup_module == NULL) {
+				DHD_ERROR(("%s[%d]: tcpack_sup_module should not be NULL\n",
+					__FUNCTION__, __LINE__));
+				dhdp->tcpack_sup_mode = TCPACK_SUP_OFF;
+				goto exit;
+			}
+			break;
+#endif /* BCMSDIO */
 	}
 
+	/* Update a new mode */
 	dhdp->tcpack_sup_mode = mode;
 
-	if (mode == TCPACK_SUP_OFF) {
-		ASSERT(dhdp->tcpack_sup_module != NULL);
-		MFREE(dhdp->osh, dhdp->tcpack_sup_module, sizeof(tcpack_sup_module_t));
-		dhdp->tcpack_sup_module = NULL;
-		goto exit;
-	}
-
-	if (dhdp->tcpack_sup_module == NULL) {
-		tcpack_sup_module_t *tcpack_sup_mod =
-			MALLOC(dhdp->osh, sizeof(tcpack_sup_module_t));
-		if (tcpack_sup_mod == NULL) {
-			DHD_ERROR(("%s %d: No MEM\n", __FUNCTION__, __LINE__));
-			dhdp->tcpack_sup_mode = TCPACK_SUP_OFF;
-			ret = BCME_NOMEM;
-			goto exit;
-		}
-		bzero(tcpack_sup_mod, sizeof(tcpack_sup_module_t));
-		dhdp->tcpack_sup_module = tcpack_sup_mod;
-	}
-
-	if (mode == TCPACK_SUP_DELAYTX) {
-		ret = _tdata_psh_info_pool_init(dhdp, dhdp->tcpack_sup_module);
-		if (ret != BCME_OK)
-			DHD_ERROR(("%s %d: pool init fail with %d\n", __FUNCTION__, __LINE__, ret));
-		else if (dhdp->bus)
-			dhd_bus_set_dotxinrx(dhdp->bus, FALSE);
-	}
-
-	if (mode == TCPACK_SUP_HOLD) {
-		int i;
-		tcpack_sup_module_t *tcpack_sup_mod =
-			(tcpack_sup_module_t *)dhdp->tcpack_sup_module;
-		dhdp->tcpack_sup_ratio = TCPACK_SUPP_RATIO;
-		dhdp->tcpack_sup_delay = TCPACK_DELAY_TIME;
-		for (i = 0; i < TCPACK_INFO_MAXNUM; i++)
-		{
-			tcpack_sup_mod->tcpack_info_tbl[i].dhdp = dhdp;
-			init_timer(&tcpack_sup_mod->tcpack_info_tbl[i].timer);
-			tcpack_sup_mod->tcpack_info_tbl[i].timer.data =
-				(ulong)&tcpack_sup_mod->tcpack_info_tbl[i];
-			tcpack_sup_mod->tcpack_info_tbl[i].timer.function = dhd_tcpack_send;
-		}
+	/* Process for a new mode */
+	switch (mode) {
+		case TCPACK_SUP_OFF:
+			ASSERT(tcpack_sup_module != NULL);
+			/* Clean up timer/data structure for
+			 * any remaining/pending packet or timer.
+			 */
+			if (tcpack_sup_module) {
+				/* Check if previous mode is TCAPACK_SUP_HOLD */
+				if (prev_mode == TCPACK_SUP_HOLD) {
+					for (i = 0; i < TCPACK_INFO_MAXNUM; i++) {
+						tcpack_info_t *tcpack_info_tbl =
+							&tcpack_sup_module->tcpack_info_tbl[i];
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
+						del_timer(&tcpack_info_tbl->timer);
+#else
+						hrtimer_cancel(&tcpack_info_tbl->timer.timer);
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
+						if (tcpack_info_tbl->pkt_in_q) {
+							PKTFREE(dhdp->osh,
+								tcpack_info_tbl->pkt_in_q, TRUE);
+							tcpack_info_tbl->pkt_in_q = NULL;
+						}
+					}
+				}
+				MFREE(dhdp->osh, tcpack_sup_module, sizeof(tcpack_sup_module_t));
+				dhdp->tcpack_sup_module = NULL;
+			} else {
+				DHD_ERROR(("%s[%d]: tcpack_sup_module should not be NULL\n",
+					__FUNCTION__, __LINE__));
+			}
+			break;
+#ifdef BCMSDIO
+		case TCPACK_SUP_REPLACE:
+			/* There is nothing to configure for this mode */
+			break;
+		case TCPACK_SUP_DELAYTX:
+			ret = _tdata_psh_info_pool_init(dhdp, tcpack_sup_module);
+			if (ret != BCME_OK) {
+				DHD_ERROR(("%s %d: pool init fail with %d\n",
+					__FUNCTION__, __LINE__, ret));
+				break;
+			}
+			if (dhdp->bus) {
+				dhd_bus_set_dotxinrx(dhdp->bus, FALSE);
+			}
+			break;
+#endif /* BCMSDIO */
+#ifdef BCMPCIE
+		case TCPACK_SUP_HOLD:
+			dhdp->tcpack_sup_ratio = dhdp->conf->tcpack_sup_ratio;
+			dhdp->tcpack_sup_delay = dhdp->conf->tcpack_sup_delay;
+			for (i = 0; i < TCPACK_INFO_MAXNUM; i++) {
+				tcpack_info_t *tcpack_info_tbl =
+					&tcpack_sup_module->tcpack_info_tbl[i];
+				tcpack_info_tbl->dhdp = dhdp;
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
+				init_timer_compat(&tcpack_info_tbl->timer, dhd_tcpack_send,
+					tcpack_info_tbl);
+#else
+				tasklet_hrtimer_init(&tcpack_info_tbl->timer,
+					dhd_tcpack_send, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
+			}
+			break;
+#endif /* BCMPCIE */
 	}
 
 exit:
-	dhd_os_tcpackunlock(dhdp);
+	dhd_os_tcpackunlock(dhdp, flags);
 	return ret;
 }
 
@@ -459,16 +522,17 @@ dhd_tcpack_info_tbl_clean(dhd_pub_t *dhdp)
 {
 	tcpack_sup_module_t *tcpack_sup_mod = dhdp->tcpack_sup_module;
 	int i;
+	unsigned long flags;
 
 	if (dhdp->tcpack_sup_mode == TCPACK_SUP_OFF)
 		goto exit;
 
-	dhd_os_tcpacklock(dhdp);
+	flags = dhd_os_tcpacklock(dhdp);
 
 	if (!tcpack_sup_mod) {
 		DHD_ERROR(("%s %d: tcpack suppress module NULL!!\n",
 			__FUNCTION__, __LINE__));
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
 	}
 
@@ -488,11 +552,15 @@ dhd_tcpack_info_tbl_clean(dhd_pub_t *dhdp)
 		bzero(tcpack_sup_mod->tcpack_info_tbl, sizeof(tcpack_info_t) * TCPACK_INFO_MAXNUM);
 	}
 
-	dhd_os_tcpackunlock(dhdp);
+	dhd_os_tcpackunlock(dhdp, flags);
 
 	if (dhdp->tcpack_sup_mode == TCPACK_SUP_HOLD) {
 		for (i = 0; i < TCPACK_INFO_MAXNUM; i++) {
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
 			del_timer_sync(&tcpack_sup_mod->tcpack_info_tbl[i].timer);
+#else
+			hrtimer_cancel(&tcpack_sup_mod->tcpack_info_tbl[i].timer.timer);
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
 		}
 	}
 
@@ -509,6 +577,7 @@ inline int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt)
 	int ret = BCME_OK;
 	void *pdata;
 	uint32 pktlen;
+	unsigned long flags;
 
 	if (dhdp->tcpack_sup_mode == TCPACK_SUP_OFF)
 		goto exit;
@@ -522,13 +591,13 @@ inline int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt)
 		goto exit;
 	}
 
-	dhd_os_tcpacklock(dhdp);
+	flags = dhd_os_tcpacklock(dhdp);
 	tcpack_sup_mod = dhdp->tcpack_sup_module;
 
 	if (!tcpack_sup_mod) {
 		DHD_ERROR(("%s %d: tcpack suppress module NULL!!\n", __FUNCTION__, __LINE__));
 		ret = BCME_ERROR;
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
 	}
 	tbl_cnt = tcpack_sup_mod->tcpack_info_cnt;
@@ -554,7 +623,7 @@ inline int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt)
 			break;
 		}
 	}
-	dhd_os_tcpackunlock(dhdp);
+	dhd_os_tcpackunlock(dhdp, flags);
 
 exit:
 	return ret;
@@ -591,20 +660,20 @@ static INLINE bool dhd_tcpdata_psh_acked(dhd_pub_t *dhdp, uint8 *ip_hdr,
 		tcpdata_info_t *tcpdata_info_tmp = &tcpack_sup_mod->tcpdata_info_tbl[i];
 		DHD_TRACE(("%s %d: data info[%d], IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
 			" TCP port %d %d\n", __FUNCTION__, __LINE__, i,
-			IPV4_ADDR_TO_STR(ntoh32_ua(tcpdata_info_tmp->src_ip_addr)),
-			IPV4_ADDR_TO_STR(ntoh32_ua(tcpdata_info_tmp->dst_ip_addr)),
-			ntoh16_ua(tcpdata_info_tmp->src_tcp_port),
-			ntoh16_ua(tcpdata_info_tmp->dst_tcp_port)));
+			IPV4_ADDR_TO_STR(ntoh32_ua(tcpdata_info_tmp->ip_addr.src)),
+			IPV4_ADDR_TO_STR(ntoh32_ua(tcpdata_info_tmp->ip_addr.dst)),
+			ntoh16_ua(tcpdata_info_tmp->tcp_port.src),
+			ntoh16_ua(tcpdata_info_tmp->tcp_port.dst)));
 
 		/* If either IP address or TCP port number does not match, skip. */
 		if (memcmp(&ip_hdr[IPV4_SRC_IP_OFFSET],
-			tcpdata_info_tmp->dst_ip_addr, IPV4_ADDR_LEN) == 0 &&
+			tcpdata_info_tmp->ip_addr.dst, IPV4_ADDR_LEN) == 0 &&
 			memcmp(&ip_hdr[IPV4_DEST_IP_OFFSET],
-			tcpdata_info_tmp->src_ip_addr, IPV4_ADDR_LEN) == 0 &&
+			tcpdata_info_tmp->ip_addr.src, IPV4_ADDR_LEN) == 0 &&
 			memcmp(&tcp_hdr[TCP_SRC_PORT_OFFSET],
-			tcpdata_info_tmp->dst_tcp_port, TCP_PORT_LEN) == 0 &&
+			tcpdata_info_tmp->tcp_port.dst, TCP_PORT_LEN) == 0 &&
 			memcmp(&tcp_hdr[TCP_DEST_PORT_OFFSET],
-			tcpdata_info_tmp->src_tcp_port, TCP_PORT_LEN) == 0) {
+			tcpdata_info_tmp->tcp_port.src, TCP_PORT_LEN) == 0) {
 			tcpdata_info = tcpdata_info_tmp;
 			break;
 		}
@@ -659,6 +728,7 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 	int i;
 	bool ret = FALSE;
 	bool set_dotxinrx = TRUE;
+	unsigned long flags;
 
 	if (dhdp->tcpack_sup_mode == TCPACK_SUP_OFF)
 		goto exit;
@@ -730,7 +800,7 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 		ntoh16_ua(&new_tcp_hdr[TCP_DEST_PORT_OFFSET])));
 
 	/* Look for tcp_ack_info that has the same ip src/dst addrs and tcp src/dst ports */
-	dhd_os_tcpacklock(dhdp);
+	flags = dhd_os_tcpacklock(dhdp);
 #if defined(DEBUG_COUNTER) && defined(DHDTCPACK_SUP_DBG)
 	counter_printlog(&tack_tbl);
 	tack_tbl.cnt[0]++;
@@ -742,7 +812,7 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 	if (!tcpack_sup_mod) {
 		DHD_ERROR(("%s %d: tcpack suppress module NULL!!\n", __FUNCTION__, __LINE__));
 		ret = BCME_ERROR;
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
 	}
 
@@ -785,7 +855,10 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 			ntoh16_ua(&old_tcp_hdr[TCP_SRC_PORT_OFFSET]),
 			ntoh16_ua(&old_tcp_hdr[TCP_DEST_PORT_OFFSET])));
 
-		/* If either of IP address or TCP port number does not match, skip. */
+		/* If either of IP address or TCP port number does not match, skip.
+		 * Note that src/dst addr fields in ip header are contiguous being 8 bytes in total.
+		 * Also, src/dst port fields in TCP header are contiguous being 4 bytes in total.
+		 */
 		if (memcmp(&new_ip_hdr[IPV4_SRC_IP_OFFSET],
 			&old_ip_hdr[IPV4_SRC_IP_OFFSET], IPV4_ADDR_LEN * 2) ||
 			memcmp(&new_tcp_hdr[TCP_SRC_PORT_OFFSET],
@@ -828,7 +901,7 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 				__FUNCTION__, __LINE__, old_tcpack_num, oldpkt,
 				new_tcp_ack_num, pkt));
 		}
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
 	}
 
@@ -851,7 +924,7 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 		DHD_TRACE(("%s %d: No empty tcp ack info tbl\n",
 			__FUNCTION__, __LINE__));
 	}
-	dhd_os_tcpackunlock(dhdp);
+	dhd_os_tcpackunlock(dhdp, flags);
 
 exit:
 	/* Unless TCPACK_SUP_DELAYTX, dotxinrx is alwasy TRUE, so no need to set here */
@@ -881,6 +954,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 
 	int i;
 	bool ret = FALSE;
+	unsigned long flags;
 
 	if (dhdp->tcpack_sup_mode != TCPACK_SUP_DELAYTX)
 		goto exit;
@@ -942,13 +1016,13 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 		ntoh16_ua(&tcp_hdr[TCP_DEST_PORT_OFFSET]),
 		tcp_hdr[TCP_FLAGS_OFFSET]));
 
-	dhd_os_tcpacklock(dhdp);
+	flags = dhd_os_tcpacklock(dhdp);
 	tcpack_sup_mod = dhdp->tcpack_sup_module;
 
 	if (!tcpack_sup_mod) {
 		DHD_ERROR(("%s %d: tcpack suppress module NULL!!\n", __FUNCTION__, __LINE__));
 		ret = BCME_ERROR;
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
 	}
 
@@ -959,16 +1033,19 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 		uint32 now_in_ms = OSL_SYSUPTIME();
 		DHD_TRACE(("%s %d: data info[%d], IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
 			" TCP port %d %d\n", __FUNCTION__, __LINE__, i,
-			IPV4_ADDR_TO_STR(ntoh32_ua(tdata_info_tmp->src_ip_addr)),
-			IPV4_ADDR_TO_STR(ntoh32_ua(tdata_info_tmp->dst_ip_addr)),
-			ntoh16_ua(tdata_info_tmp->src_tcp_port),
-			ntoh16_ua(tdata_info_tmp->dst_tcp_port)));
+			IPV4_ADDR_TO_STR(ntoh32_ua(tdata_info_tmp->ip_addr.src)),
+			IPV4_ADDR_TO_STR(ntoh32_ua(tdata_info_tmp->ip_addr.dst)),
+			ntoh16_ua(tdata_info_tmp->tcp_port.src),
+			ntoh16_ua(tdata_info_tmp->tcp_port.dst)));
 
-		/* If both IP address and TCP port number match, we found it so break. */
+		/* If both IP address and TCP port number match, we found it so break.
+		 * Note that src/dst addr fields in ip header are contiguous being 8 bytes in total.
+		 * Also, src/dst port fields in TCP header are contiguous being 4 bytes in total.
+		 */
 		if (memcmp(&ip_hdr[IPV4_SRC_IP_OFFSET],
-			tdata_info_tmp->src_ip_addr, IPV4_ADDR_LEN * 2) == 0 &&
+			(void *)&tdata_info_tmp->ip_addr, IPV4_ADDR_LEN * 2) == 0 &&
 			memcmp(&tcp_hdr[TCP_SRC_PORT_OFFSET],
-			tdata_info_tmp->src_tcp_port, TCP_PORT_LEN * 2) == 0) {
+			(void *)&tdata_info_tmp->tcp_port, TCP_PORT_LEN * 2) == 0) {
 			tcpdata_info = tdata_info_tmp;
 			tcpdata_info->last_used_time = now_in_ms;
 			break;
@@ -999,7 +1076,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 				bcopy(last_tdata_info, tdata_info_tmp, sizeof(tcpdata_info_t));
 			}
 			bzero(last_tdata_info, sizeof(tcpdata_info_t));
-			DHD_ERROR(("%s %d: tcpdata_info(idx %d) is aged out. ttl cnt is now %d\n",
+			DHD_INFO(("%s %d: tcpdata_info(idx %d) is aged out. ttl cnt is now %d\n",
 				__FUNCTION__, __LINE__, i, tcpack_sup_mod->tcpdata_info_cnt));
 			/* Don't increase "i" here, so that the prev last tcpdata_info is checked */
 		} else
@@ -1020,7 +1097,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 				IPV4_ADDR_TO_STR(ntoh32_ua(&ip_hdr[IPV4_DEST_IP_OFFSET])),
 				ntoh16_ua(&tcp_hdr[TCP_SRC_PORT_OFFSET]),
 				ntoh16_ua(&tcp_hdr[TCP_DEST_PORT_OFFSET])));
-			dhd_os_tcpackunlock(dhdp);
+			dhd_os_tcpackunlock(dhdp, flags);
 			goto exit;
 		}
 		tcpdata_info = &tcpack_sup_mod->tcpdata_info_tbl[i];
@@ -1028,17 +1105,19 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 		/* No TCP flow with the same IP addr and TCP port is found
 		 * in tcp_data_info_tbl. So add this flow to the table.
 		 */
-		DHD_ERROR(("%s %d: Add data info to tbl[%d]: IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
+		DHD_INFO(("%s %d: Add data info to tbl[%d]: IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
 			" TCP port %d %d\n",
 			__FUNCTION__, __LINE__, tcpack_sup_mod->tcpdata_info_cnt,
 			IPV4_ADDR_TO_STR(ntoh32_ua(&ip_hdr[IPV4_SRC_IP_OFFSET])),
 			IPV4_ADDR_TO_STR(ntoh32_ua(&ip_hdr[IPV4_DEST_IP_OFFSET])),
 			ntoh16_ua(&tcp_hdr[TCP_SRC_PORT_OFFSET]),
 			ntoh16_ua(&tcp_hdr[TCP_DEST_PORT_OFFSET])));
-
-		bcopy(&ip_hdr[IPV4_SRC_IP_OFFSET], tcpdata_info->src_ip_addr,
+		/* Note that src/dst addr fields in ip header are contiguous being 8 bytes in total.
+		 * Also, src/dst port fields in TCP header are contiguous being 4 bytes in total.
+		 */
+		bcopy(&ip_hdr[IPV4_SRC_IP_OFFSET], (void *)&tcpdata_info->ip_addr,
 			IPV4_ADDR_LEN * 2);
-		bcopy(&tcp_hdr[TCP_SRC_PORT_OFFSET], tcpdata_info->src_tcp_port,
+		bcopy(&tcp_hdr[TCP_SRC_PORT_OFFSET], (void *)&tcpdata_info->tcp_port,
 			TCP_PORT_LEN * 2);
 
 		tcpdata_info->last_used_time = OSL_SYSUPTIME();
@@ -1056,7 +1135,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 	if (tdata_psh_info == NULL) {
 		DHD_ERROR(("%s %d: No more free tdata_psh_info!!\n", __FUNCTION__, __LINE__));
 		ret = BCME_ERROR;
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
 	}
 	tdata_psh_info->end_seq = end_tcp_seq_num;
@@ -1078,7 +1157,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 	}
 	tcpdata_info->tdata_psh_info_tail = tdata_psh_info;
 
-	dhd_os_tcpackunlock(dhdp);
+	dhd_os_tcpackunlock(dhdp, flags);
 
 exit:
 	return ret;
@@ -1100,6 +1179,7 @@ dhd_tcpack_hold(dhd_pub_t *dhdp, void *pkt, int ifidx)
 	tcpack_info_t *tcpack_info_tbl;
 	int i, free_slot = TCPACK_INFO_MAXNUM;
 	bool hold = FALSE;
+	unsigned long flags;
 
 	if (dhdp->tcpack_sup_mode != TCPACK_SUP_HOLD) {
 		goto exit;
@@ -1176,14 +1256,14 @@ dhd_tcpack_hold(dhd_pub_t *dhdp, void *pkt, int ifidx)
 		ntoh16_ua(&new_tcp_hdr[TCP_DEST_PORT_OFFSET])));
 
 	/* Look for tcp_ack_info that has the same ip src/dst addrs and tcp src/dst ports */
-	dhd_os_tcpacklock(dhdp);
+	flags = dhd_os_tcpacklock(dhdp);
 
 	tcpack_sup_mod = dhdp->tcpack_sup_module;
 	tcpack_info_tbl = tcpack_sup_mod->tcpack_info_tbl;
 
 	if (!tcpack_sup_mod) {
 		DHD_ERROR(("%s %d: tcpack suppress module NULL!!\n", __FUNCTION__, __LINE__));
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
 	}
 
@@ -1192,7 +1272,7 @@ dhd_tcpack_hold(dhd_pub_t *dhdp, void *pkt, int ifidx)
 	for (i = 0; i < TCPACK_INFO_MAXNUM; i++) {
 		void *oldpkt;	/* TCPACK packet that is already in txq or DelayQ */
 		uint8 *old_ether_hdr, *old_ip_hdr, *old_tcp_hdr;
-		uint32 old_ip_hdr_len, old_tcp_hdr_len;
+		uint32 old_ip_hdr_len;
 		uint32 old_tcpack_num;	/* TCP ACK number of old TCPACK packet in Q */
 
 		if ((oldpkt = tcpack_info_tbl[i].pkt_in_q) == NULL) {
@@ -1206,7 +1286,7 @@ dhd_tcpack_hold(dhd_pub_t *dhdp, void *pkt, int ifidx)
 			DHD_ERROR(("%s %d: oldpkt data NULL!! cur idx %d\n",
 				__FUNCTION__, __LINE__, i));
 			hold = FALSE;
-			dhd_os_tcpackunlock(dhdp);
+			dhd_os_tcpackunlock(dhdp, flags);
 			goto exit;
 		}
 
@@ -1214,7 +1294,6 @@ dhd_tcpack_hold(dhd_pub_t *dhdp, void *pkt, int ifidx)
 		old_ip_hdr = old_ether_hdr + ETHER_HDR_LEN;
 		old_ip_hdr_len = IPV4_HLEN(old_ip_hdr);
 		old_tcp_hdr = old_ip_hdr + old_ip_hdr_len;
-		old_tcp_hdr_len = 4 * TCP_HDRLEN(old_tcp_hdr[TCP_HLEN_OFFSET]);
 
 		DHD_TRACE(("%s %d: oldpkt %p[%d], IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
 			" TCP port %d %d\n", __FUNCTION__, __LINE__, oldpkt, i,
@@ -1250,10 +1329,14 @@ dhd_tcpack_hold(dhd_pub_t *dhdp, void *pkt, int ifidx)
 		} else {
 			PKTFREE(dhdp->osh, pkt, TRUE);
 		}
-		dhd_os_tcpackunlock(dhdp);
+		dhd_os_tcpackunlock(dhdp, flags);
 
 		if (!hold) {
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
 			del_timer_sync(&tcpack_info_tbl[i].timer);
+#else
+			hrtimer_cancel(&tcpack_sup_mod->tcpack_info_tbl[i].timer.timer);
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
 		}
 		goto exit;
 	}
@@ -1270,16 +1353,73 @@ dhd_tcpack_hold(dhd_pub_t *dhdp, void *pkt, int ifidx)
 		tcpack_info_tbl[free_slot].pkt_ether_hdr = new_ether_hdr;
 		tcpack_info_tbl[free_slot].ifidx = ifidx;
 		tcpack_info_tbl[free_slot].supp_cnt = 1;
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
 		mod_timer(&tcpack_sup_mod->tcpack_info_tbl[free_slot].timer,
 			jiffies + msecs_to_jiffies(dhdp->tcpack_sup_delay));
+#else
+		tasklet_hrtimer_start(&tcpack_sup_mod->tcpack_info_tbl[free_slot].timer,
+			ktime_set(0, dhdp->tcpack_sup_delay*1000000),
+			HRTIMER_MODE_REL);
+#endif /* TCPACK_SUPPRESS_HOLD_HRT */
 		tcpack_sup_mod->tcpack_info_cnt++;
 	} else {
 		DHD_TRACE(("%s %d: No empty tcp ack info tbl\n",
 			__FUNCTION__, __LINE__));
 	}
-	dhd_os_tcpackunlock(dhdp);
+	dhd_os_tcpackunlock(dhdp, flags);
 
 exit:
 	return hold;
 }
 #endif /* DHDTCPACK_SUPPRESS */
+
+#ifdef DHDTCPSYNC_FLOOD_BLK
+tcp_hdr_flag_t
+dhd_tcpdata_get_flag(dhd_pub_t *dhdp, void *pkt)
+{
+	uint8 *ether_hdr;	/* Ethernet header of the new packet */
+	uint16 ether_type;	/* Ethernet type of the new packet */
+	uint8 *ip_hdr;		/* IP header of the new packet */
+	uint8 *tcp_hdr;		/* TCP header of the new packet */
+	uint32 ip_hdr_len;	/* IP header length of the new packet */
+	uint32 cur_framelen;
+	uint8 flags;
+
+	ether_hdr = PKTDATA(dhdp->osh, pkt);
+	cur_framelen = PKTLEN(dhdp->osh, pkt);
+
+	ether_type = ether_hdr[12] << 8 | ether_hdr[13];
+
+	if (ether_type != ETHER_TYPE_IP) {
+		DHD_TRACE(("%s %d: Not a IP packet 0x%x\n",
+			__FUNCTION__, __LINE__, ether_type));
+		return FLAG_OTHERS;
+	}
+
+	ip_hdr = ether_hdr + ETHER_HDR_LEN;
+	cur_framelen -= ETHER_HDR_LEN;
+
+	if (cur_framelen < IPV4_MIN_HEADER_LEN) {
+		return FLAG_OTHERS;
+	}
+
+	ip_hdr_len = IPV4_HLEN(ip_hdr);
+	if (IP_VER(ip_hdr) != IP_VER_4 || IPV4_PROT(ip_hdr) != IP_PROT_TCP) {
+		DHD_TRACE(("%s %d: Not IPv4 nor TCP! ip ver %d, prot %d\n",
+			__FUNCTION__, __LINE__, IP_VER(ip_hdr), IPV4_PROT(ip_hdr)));
+		return FLAG_OTHERS;
+	}
+
+	tcp_hdr = ip_hdr + ip_hdr_len;
+
+	flags = (uint8)tcp_hdr[TCP_FLAGS_OFFSET];
+
+	if (flags & TCP_FLAG_SYN) {
+		if (flags & TCP_FLAG_ACK) {
+			return FLAG_SYNCACK;
+		}
+		return FLAG_SYNC;
+	}
+	return FLAG_OTHERS;
+}
+#endif /* DHDTCPSYNC_FLOOD_BLK */

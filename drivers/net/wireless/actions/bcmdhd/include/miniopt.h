@@ -1,10 +1,25 @@
 /*
  * Command line options parser.
  *
- * $Copyright Open Broadcom Corporation$
- * $Id: miniopt.h 484281 2014-06-12 22:42:26Z $
+ * Copyright (C) 2020, Broadcom.
+ *
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Dual:>>
  */
-
 
 #ifndef MINI_OPT_H
 #define MINI_OPT_H
@@ -14,7 +29,6 @@ extern "C" {
 #endif
 
 /* ---- Include Files ---------------------------------------------------- */
-
 
 /* ---- Constants and Types ---------------------------------------------- */
 
@@ -49,10 +63,8 @@ typedef struct miniopt {
 void miniopt_init(miniopt_t *t, const char* name, const char* flags, bool longflags);
 int miniopt(miniopt_t *t, char **argv);
 
-
 /* ---- Variable Externs ------------------------------------------------- */
 /* ---- Function Prototypes ---------------------------------------------- */
-
 
 #ifdef __cplusplus
 	}

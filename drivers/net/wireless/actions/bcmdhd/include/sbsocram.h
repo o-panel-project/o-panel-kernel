@@ -1,9 +1,24 @@
 /*
  * BCM47XX Sonics SiliconBackplane embedded ram core
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 2020, Broadcom.
  *
- * $Id: sbsocram.h 481602 2014-05-29 22:43:34Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Dual:>>
  */
 
 #ifndef	_SBSOCRAM_H
@@ -102,6 +117,8 @@ typedef volatile struct sbsocramregs {
 #define	SRCI_SRBSZ_MASK		0xf
 #define	SRCI_SRBSZ_SHIFT	0
 
+#define	SRCI_SRNB_MASK_EXT	0x100
+
 #define SR_BSZ_BASE		14
 
 /* Standby control register */
@@ -148,7 +165,7 @@ typedef volatile struct sbsocramregs {
 #define SOCRAM_BANKIDX_MEMTYPE_SHIFT	8
 /* socram bankinfo memtype */
 #define SOCRAM_MEMTYPE_RAM		0
-#define SOCRAM_MEMTYPE_R0M		1
+#define SOCRAM_MEMTYPE_ROM		1
 #define SOCRAM_MEMTYPE_DEVRAM		2
 
 #define	SOCRAM_BANKINFO_REG		0x40
@@ -177,6 +194,5 @@ typedef volatile struct sbsocramregs {
 /* bank info to calculate bank size */
 #define   SOCRAM_BANKINFO_SZBASE          8192
 #define SOCRAM_BANKSIZE_SHIFT         13      /* SOCRAM_BANKINFO_SZBASE */
-
 
 #endif	/* _SBSOCRAM_H */
