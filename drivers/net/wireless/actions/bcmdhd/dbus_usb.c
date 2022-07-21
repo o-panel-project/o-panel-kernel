@@ -38,7 +38,6 @@
 #include <bcmutils.h>
 #include <dbus.h>
 #include <usbrdl.h>
-#include <bcmdevs_legacy.h>
 #include <bcmdevs.h>
 #include <bcmendian.h>
 

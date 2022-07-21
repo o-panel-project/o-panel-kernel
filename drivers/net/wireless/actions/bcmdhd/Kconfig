@@ -7,14 +7,14 @@ config BCMDHD
 config BCMDHD_FW_PATH
 	depends on BCMDHD
 	string "Firmware path"
-	default "/lib/firmware/ap6203bm/fw_bcm43013c1_ag.bin"
+	default "/lib/firmware/wifi/fw_bcm40183b2_ag.bin"
 	---help---
 	  Path to the firmware file.
 
 config BCMDHD_NVRAM_PATH
 	depends on BCMDHD
 	string "NVRAM path"
-	default "/lib/firmware/ap6203bm/nvram_ap6203bm.txt"
+	default "/lib/firmware/wifi/nvram_ap6330.txt"
 	---help---
 	  Path to the calibration file.
 

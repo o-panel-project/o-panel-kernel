@@ -1,7 +1,7 @@
 /*
  * Fundamental constants relating to Neighbor Discovery Protocol
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -17,8 +17,14 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * <<Broadcom-WL-IPTag/Dual:>>
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: bcmipv6.h 700076 2017-05-17 14:42:22Z $
  */
 
 #ifndef _bcmipv6_h_
@@ -26,7 +32,7 @@
 
 #ifndef _TYPEDEFS_H_
 #include <typedefs.h>
-#endif
+#endif // endif
 
 /* This marks the start of a packed structure section. */
 #include <packed_section_start.h>
@@ -80,9 +86,6 @@ BWL_PRE_PACKED_STRUCT struct ipv6_addr {
 		uint8		addr[16];
 } BWL_POST_PACKED_STRUCT;
 
-/* use masks, htonl instead of bit fileds */
-#ifndef IL_BIGENDIAN
-
 /* ICMPV6 Header */
 BWL_PRE_PACKED_STRUCT struct icmp6_hdr {
 	uint8	icmp6_type;
@@ -132,8 +135,6 @@ BWL_PRE_PACKED_STRUCT struct ipv6_frag {
 	uint16	frag_offset;
 	uint32	ident;
 } BWL_POST_PACKED_STRUCT;
-
-#endif /* IL_BIGENDIAN */
 
 /* This marks the end of a packed structure section. */
 #include <packed_section_end.h>

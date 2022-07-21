@@ -10,25 +10,25 @@
 #define ESCAN_ERROR(name, arg1, args...) \
 	do { \
 		if (android_msg_level & ANDROID_ERROR_LEVEL) { \
-			printf("[%s] ESCAN-ERROR) %s : " arg1, name, __func__, ## args); \
+			printk(KERN_ERR DHD_LOG_PREFIX "[%s] ESCAN-ERROR) %s : " arg1, name, __func__, ## args); \
 		} \
 	} while (0)
 #define ESCAN_TRACE(name, arg1, args...) \
 	do { \
 		if (android_msg_level & ANDROID_TRACE_LEVEL) { \
-			printf("[%s] ESCAN-TRACE) %s : " arg1, name, __func__, ## args); \
+			printk(KERN_INFO DHD_LOG_PREFIX "[%s] ESCAN-TRACE) %s : " arg1, name, __func__, ## args); \
 		} \
 	} while (0)
 #define ESCAN_SCAN(name, arg1, args...) \
 	do { \
 		if (android_msg_level & ANDROID_SCAN_LEVEL) { \
-			printf("[%s] ESCAN-SCAN) %s : " arg1, name, __func__, ## args); \
+			printk(KERN_INFO DHD_LOG_PREFIX "[%s] ESCAN-SCAN) %s : " arg1, name, __func__, ## args); \
 		} \
 	} while (0)
 #define ESCAN_DBG(name, arg1, args...) \
 	do { \
 		if (android_msg_level & ANDROID_DBG_LEVEL) { \
-			printf("[%s] ESCAN-DBG) %s : " arg1, name, __func__, ## args); \
+			printk(KERN_INFO DHD_LOG_PREFIX "[%s] ESCAN-DBG) %s : " arg1, name, __func__, ## args); \
 		} \
 	} while (0)
 
@@ -43,6 +43,7 @@
 
 #define wl_escan_get_buf(a) ((wl_scan_results_t *) (a)->escan_buf)
 
+#if 1//sunlei
 #if defined(WL_WIRELESS_EXT)
 extern int wl_iw_handle_scanresults_ies(char **event_p, char *end,
 	struct iw_request_info *info, wl_bss_info_t *bi);
@@ -51,6 +52,10 @@ extern int wl_iw_handle_scanresults_ies(char **event_p, char *end,
 #endif
 #define for_each_bss(list, bss, __i)	\
 	for (__i = 0; __i < list->count; __i++, bss = next_bss(list, bss))
+#else
+#define for_each_bss(list, bss, __i)	\
+	for (__i = 0; __i < list->count && __i < IW_MAX_AP; __i++, bss = next_bss(list, bss))
+#endif//sunlei
 
 #define wl_escan_set_sync_id(a) ((a) = htod16(0x1234))
 
@@ -223,7 +228,8 @@ wl_escan_dump_bss(struct net_device *dev, struct wl_escan_info *escan,
 	chanspec_t chanspec;
 
 #if defined(RSSIAVG)
-	rssi = wl_get_avg_rssi(&escan->g_rssi_cache_ctrl, &bi->BSSID);
+    //sunlei
+	rssi =  wl_get_avg_rssi(&escan->g_rssi_cache_ctrl, &bi->BSSID);//wl_get_avg_rssi(dev, &bi->BSSID, FALSE);
 	if (rssi == RSSI_MINVAL)
 		rssi = MIN(dtoh16(bi->RSSI), RSSI_MAXVAL);
 #else
@@ -910,7 +916,8 @@ wl_escan_set_scan(struct net_device *dev, wl_scan_info_t *scan_info)
 		goto exit2;
 	}
 
-#if defined(WL_EXT_IAPSTA) && defined(WL_CFG80211)
+//sunlei
+#if defined(WL_EXT_IAPSTA) && defined(WL_CFG80211)//#ifdef WL_EXT_IAPSTA
 	err = wl_ext_in4way_sync(dev, STA_NO_SCAN_IN4WAY, WL_EXT_STATUS_SCAN, NULL);
 	if (err) {
 		ESCAN_SCAN(dev->name, "scan busy %d\n", err);
@@ -994,7 +1001,7 @@ wl_escan_set_scan(struct net_device *dev, wl_scan_info_t *scan_info)
 		escan->escan_ioctl_buf, WLC_IOCTL_MEDLEN, NULL);
 	if (unlikely(err)) {
 		ESCAN_ERROR(dev->name, "escan error (%d)\n", err);
-	} else {
+	} else {//sunlei
 		escan->dev = dev;
 	}
 	kfree(params);
@@ -1156,7 +1163,8 @@ wl_escan_merge_scan_list(struct net_device *dev, u8 *cur_bssid,
 
 	bss_list = escan->bss_list;
 	bi = next_bss(bss_list, bi);
-	for_each_bss_wext(bss_list, bi, i)
+	//sunlei
+	for_each_bss_wext(bss_list, bi, i)//for_each_bss(bss_list, bi, i)
 	{
 		if (!memcmp(&bi->BSSID, cur_bssid, ETHER_ADDR_LEN)) {
 			ESCAN_SCAN(dev->name, "skip connected AP %pM\n", cur_bssid);
@@ -1385,7 +1393,7 @@ wl_escan_mesh_info_ie(struct net_device *dev, u8 *parse, u32 len,
 }
 
 bool
-wl_escan_mesh_info(struct net_device *dev, struct wl_escan_info *escan,
+wl_escan_mesh_info(struct net_device *dev, struct wl_escan_info *escan, 
 	struct ether_addr *peer_bssid, struct wl_mesh_params *mesh_info)
 {
 	int i = 0;
@@ -1456,7 +1464,7 @@ exit:
 }
 
 bool
-wl_escan_mesh_peer(struct net_device *dev, struct wl_escan_info *escan,
+wl_escan_mesh_peer(struct net_device *dev, struct wl_escan_info *escan, 
 	wlc_ssid_t *cur_ssid, uint16 cur_chan, bool sae,
 	struct wl_mesh_params *mesh_info)
 {
@@ -1765,3 +1773,4 @@ exit:
 }
 
 #endif /* WL_ESCAN */
+

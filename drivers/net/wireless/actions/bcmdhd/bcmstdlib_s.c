@@ -1,7 +1,7 @@
 /*
  * Broadcom Secure Standard Library.
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -17,10 +17,17 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * <<Broadcom-WL-IPTag/Dual:>>
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id $
  */
 
+#include <bcm_cfg.h>
 #include <typedefs.h>
 #include <bcmdefs.h>
 #ifdef BCMDRIVER
@@ -33,15 +40,6 @@
 #include <bcmstdlib_s.h>
 #include <bcmutils.h>
 
-/* Don't use compiler builtins for stdlib APIs within the implementation of the stdlib itself. */
-#if defined(BCM_STDLIB_S_BUILTINS_TEST)
-	#undef memmove_s
-	#undef memcpy_s
-	#undef memset_s
-	#undef strlcpy
-	#undef strlcat_s
-#endif /* BCM_STDLIB_S_BUILTINS_TEST */
-
 /*
  * __SIZE_MAX__ value is depending on platform:
  * Firmware Dongle: RAMSIZE (Dongle Specific Limit).
@@ -50,18 +48,14 @@
  */
 #ifndef SIZE_MAX
 #ifndef __SIZE_MAX__
-#ifdef DONGLEBUILD
-#define __SIZE_MAX__ RAMSIZE
-#else
 #define __SIZE_MAX__ 0xFFFFFFFFu
-#endif /* DONGLEBUILD */
 #endif /* __SIZE_MAX__ */
 #define SIZE_MAX __SIZE_MAX__
 #endif /* SIZE_MAX */
 #define RSIZE_MAX (SIZE_MAX >> 1u)
 
-#if !defined(__STDC_WANT_SECURE_LIB__) && \
-	!(defined(__STDC_LIB_EXT1__) && defined(__STDC_WANT_LIB_EXT1__))
+#if !defined(__STDC_WANT_SECURE_LIB__) && !(defined(__STDC_LIB_EXT1__) && \
+	defined(__STDC_WANT_LIB_EXT1__))
 /*
  * memmove_s - secure memmove
  * dest : pointer to the object to copy to
@@ -115,7 +109,7 @@ exit:
  * than RSIZE_MAX, writes destsz zero bytes into the dest object.
  */
 int
-BCMPOSTTRAPFN(memcpy_s)(void *dest, size_t destsz, const void *src, size_t n)
+memcpy_s(void *dest, size_t destsz, const void *src, size_t n)
 {
 	int err = BCME_OK;
 	char *d = dest;
@@ -166,7 +160,7 @@ exit:
  * than RSIZE_MAX, writes destsz bytes with value c into the dest object.
  */
 int
-BCMPOSTTRAPFN(memset_s)(void *dest, size_t destsz, int c, size_t n)
+memset_s(void *dest, size_t destsz, int c, size_t n)
 {
 	int err = BCME_OK;
 	if ((!dest) || (((char *)dest + destsz) < (char *)dest)) {
@@ -191,13 +185,13 @@ exit:
 }
 #endif /* !__STDC_WANT_SECURE_LIB__ && !(__STDC_LIB_EXT1__ && __STDC_WANT_LIB_EXT1__) */
 
-#if !defined(FREEBSD) && !defined(MACOSX) && !defined(BCM_USE_PLATFORM_STRLCPY)
+#if 0
 /**
  * strlcpy - Copy a %NUL terminated string into a sized buffer
  * @dest: Where to copy the string to
  * @src: Where to copy the string from
  * @size: size of destination buffer 0 if input parameters are NOK
- * return: string leng of src (which is always < size) on success or size on failure
+ * return: string leng of src (assume src is NUL terminated)
  *
  * Compatible with *BSD: the result is always a valid
  * NUL-terminated string that fits in the buffer (unless,
@@ -206,32 +200,46 @@ exit:
  */
 size_t strlcpy(char *dest, const char *src, size_t size)
 {
-	size_t i;
+	const char *s = src;
+	size_t n;
 
-	if (dest == NULL || size == 0) {
+	if (dest == NULL) {
 		return 0;
 	}
 
-	if (src == NULL) {
+	/* terminate dest if src is NULL and return 0 as only NULL was added */
+	if (s == NULL) {
 		*dest = '\0';
 		return 0;
 	}
 
-	for (i = 0; i < size; i++) {
-		dest[i] = src[i];
-		if (dest[i] == '\0') {
-			/* success - src string copied */
-			return i;
-		}
+	/* allows us to handle size 0 */
+	if (size == 0) {
+		n = 0;
+	} else {
+		n = size - 1u;
 	}
 
-	/* NULL terminate since not found in src */
-	dest[size - 1u] = '\0';
+	/* perform copy */
+	while (*s && n != 0) {
+		*dest++ = *s++;
+		n--;
+	}
 
-	/* fail - src string truncated */
-	return size;
+	*dest = '\0';
+
+	/* count to end of s or compensate for NULL */
+	if (n == 0) {
+		while (*s++)
+			;
+	} else {
+		s++;
+	}
+
+	/* return bytes copied not accounting NUL */
+	return (s - src - 1u);
 }
-#endif /* !defined(FREEBSD) && !defined(MACOSX) && !defined(BCM_USE_PLATFORM_STRLCPY) */
+#endif // endif
 
 /**
  * strlcat_s - Concatenate a %NUL terminated string with a sized buffer

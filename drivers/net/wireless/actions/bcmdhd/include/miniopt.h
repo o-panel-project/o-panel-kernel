@@ -1,7 +1,7 @@
 /*
  * Command line options parser.
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -17,8 +17,14 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * <<Broadcom-WL-IPTag/Dual:>>
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: miniopt.h 672943 2016-11-30 08:54:06Z $
  */
 
 #ifndef MINI_OPT_H
@@ -26,7 +32,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif // endif
 
 /* ---- Include Files ---------------------------------------------------- */
 
@@ -68,6 +74,6 @@ int miniopt(miniopt_t *t, char **argv);
 
 #ifdef __cplusplus
 	}
-#endif
+#endif // endif
 
 #endif  /* MINI_OPT_H  */

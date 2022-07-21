@@ -1,7 +1,9 @@
 /*
- * DHD debug ring header file - interface
+ * DHD debug ring header file
  *
- * Copyright (C) 2020, Broadcom.
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -17,10 +19,11 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id$
+ * $Id: dhd_dbg_ring.h 795094 2018-12-17 08:56:58Z $
  */
 
 #ifndef __DHD_DBG_RING_H__
@@ -28,11 +31,7 @@
 
 #include <bcmutils.h>
 
-#if defined(LINUX)
 #define PACKED_STRUCT __attribute__ ((packed))
-#else
-#define PACKED_STRUCT
-#endif
 
 #define DBGRING_NAME_MAX 32
 
@@ -97,9 +96,9 @@ typedef struct dhd_dbg_ring {
 
 #define DBGRING_FLUSH_THRESHOLD(ring)		(ring->ring_size / 3)
 #define RING_STAT_TO_STATUS(ring, status) \
-	do { \
-		/* status.name/ring->name are the same length so no need to check return value */ \
-		(void)memcpy_s(status.name, sizeof(status.name), ring->name, sizeof(ring->name)); \
+	do {               \
+		strncpy(status.name, ring->name, \
+			sizeof(status.name) - 1);  \
 		status.ring_id = ring->id;     \
 		status.ring_buffer_byte_size = ring->ring_size;  \
 		status.written_bytes = ring->stat.written_bytes; \
@@ -113,7 +112,6 @@ typedef struct dhd_dbg_ring {
 #define PAYLOAD_MAX_LEN 65535
 #define PAYLOAD_ECNTR_MAX_LEN 1648u
 #define PAYLOAD_RTT_MAX_LEN 1648u
-#define PAYLOAD_BCM_TRACE_MAX_LEN 1648u
 #define PENDING_LEN_MAX 0xFFFFFFFF
 #define DBG_RING_STATUS_SIZE (sizeof(dhd_dbg_ring_status_t))
 
@@ -126,10 +124,6 @@ typedef struct dhd_dbg_ring {
 
 typedef void (*os_pullreq_t)(void *os_priv, const int ring_id);
 
-dhd_dbg_ring_t *dhd_dbg_ring_alloc_init(dhd_pub_t *dhd, uint16 ring_id,
-	char *ring_name, uint32 ring_sz, void *allocd_buf,
-	bool pull_inactive);
-void dhd_dbg_ring_dealloc_deinit(void **dbgring, dhd_pub_t *dhd);
 int dhd_dbg_ring_init(dhd_pub_t *dhdp, dhd_dbg_ring_t *ring, uint16 id, uint8 *name,
 		uint32 ring_sz, void *allocd_buf, bool pull_inactive);
 void dhd_dbg_ring_deinit(dhd_pub_t *dhdp, dhd_dbg_ring_t *ring);

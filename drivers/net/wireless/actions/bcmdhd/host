@@ -1,0 +1,41 @@
+Binary file ./bcmsdh_sdmmc_linux.o matches
+./dhd_config.c:		dhd->conf->devid = adapter->sdio_func->device;
+./bcmsdh_sdmmc_linux.c:	int host_idx = func->card->host->index;
+./bcmsdh_sdmmc_linux.c:	uint32 rca = func->card->rca;
+./bcmsdh_sdmmc_linux.c:	wl_cfg80211_set_parent_dev(&func->dev);
+./bcmsdh_sdmmc_linux.c:	 osh = osl_attach(&func->dev, SDIO_BUS, TRUE);
+./bcmsdh_sdmmc_linux.c:	 sdioh->bcmsdh = bcmsdh_probe(osh, &func->dev, sdioh, adapter, SDIO_BUS, host_idx, rca);
+./bcmsdh_sdmmc_linux.c:	sd_err(("%s: Enter num=%d\n", __FUNCTION__, func->num));
+./bcmsdh_sdmmc_linux.c:	sd_info(("sdio_bcmsdh: func->class=%x\n", func->class));
+./bcmsdh_sdmmc_linux.c:	sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
+./bcmsdh_sdmmc_linux.c:	sd_info(("sdio_device: 0x%04x\n", func->device));
+./bcmsdh_sdmmc_linux.c:	sd_info(("Function#: 0x%04x\n", func->num));
+./bcmsdh_sdmmc_linux.c:	gInstance->func[func->num] = func;
+./bcmsdh_sdmmc_linux.c:	if ((func->num == 2) || (func->num == 1 && func->device == 0x4))
+./bcmsdh_sdmmc_linux.c:	sd_info(("sdio_bcmsdh: func->class=%x\n", func->class));
+./bcmsdh_sdmmc_linux.c:	sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
+./bcmsdh_sdmmc_linux.c:	sd_info(("sdio_device: 0x%04x\n", func->device));
+./bcmsdh_sdmmc_linux.c:	sd_info(("Function#: 0x%04x\n", func->num));
+./bcmsdh_sdmmc_linux.c:	if ((func->num == 2) || (func->num == 1 && func->device == 0x4))
+./bcmsdh_sdmmc_linux.c:	printf("%s Enter func->num=%d\n", __FUNCTION__, func->num);
+./bcmsdh_sdmmc_linux.c:	if (func->num != 2)
+./bcmsdh_sdmmc_linux.c:	printf("%s Enter func->num=%d\n", __FUNCTION__, func->num);
+./bcmsdh_sdmmc_linux.c:	if (func->num != 2)
+./bcmsdh_sdmmc_linux.c:	if (func && (func->num != 2)) {
+Binary file ./bcmdhd.o matches
+Binary file ./bcmdhd.ko matches
+./dhd_gpio.c:		if (adapter->sdio_func && adapter->sdio_func->card && adapter->sdio_func->card->host) {
+./dhd_gpio.c:			mmc_power_restore_host(adapter->sdio_func->card->host);
+./dhd_gpio.c:		if (adapter->sdio_func && adapter->sdio_func->card && adapter->sdio_func->card->host) {
+./dhd_gpio.c:			mmc_power_save_host(adapter->sdio_func->card->host);
+./dhd_sdio.c:	host = func->card->host;
+./bcmsdh_sdmmc.c:	sd->fake_func0.card = func->card;
+./bcmsdh_sdmmc.c:	if (func->num == 2)
+./bcmsdh_sdmmc.c:	sd->func[1] = func->card->sdio_func[0];
+./bcmsdh_sdmmc.c:	sd->func[2] = func->card->sdio_func[1];
+./bcmsdh_sdmmc.c:	sd->func[func->num] = func;
+./bcmsdh_sdmmc.c:	if ((func->device == BCM43362_CHIP_ID || func->device == BCM4330_CHIP_ID) &&
+./bcmsdh_sdmmc.c:	struct mmc_host *host = sdio_func->card->host;
+./bcmsdh_sdmmc.c:		mmc_set_data_timeout(&mmc_dat, sdio_func->card);
+./bcmsdh_sdmmc.c:	struct mmc_host *host = sdio_func->card->host;
+./bcmsdh_sdmmc.c:	struct mmc_host *host = sdio_func->card->host;

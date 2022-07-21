@@ -1,7 +1,7 @@
 /*
  * Utility routines for configuring different memories in Broadcom chips.
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -17,8 +17,14 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * <<Broadcom-WL-IPTag/Dual:>>
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: $
  */
 
 #include <typedefs.h>
@@ -55,7 +61,7 @@ hndmem_num_banks(si_t *sih, int mem)
 		goto exit;
 	}
 
-	if (GCIREV(sih->gcirev) >= 9) {
+	if (sih->gcirev >= 9) {
 		gciregs = si_setcore(sih, GCI_CORE_ID, 0);
 
 		mem_info = R_REG(osh, &gciregs->wlan_mem_info);
@@ -111,7 +117,7 @@ hndmem_bank_size(si_t *sih, hndmem_type_t mem, int bank_num)
 		goto exit;
 	}
 
-	if (GCIREV(sih->gcirev) >= 9) {
+	if (sih->gcirev >= 9) {
 		gciregs = si_setcore(sih, GCI_CORE_ID, 0);
 
 		reg_data = ((mem &
@@ -206,7 +212,7 @@ hndmem_sleeppda_bank_config(si_t *sih, hndmem_type_t mem, int bank_num,
 	}
 
 	/* Sleep PDA is supported only by GCI rev >= 9 */
-	if (GCIREV(sih->gcirev) < 9) {
+	if (sih->gcirev < 9) {
 		err = BCME_UNSUPPORTED;
 		goto exit;
 	}
@@ -279,7 +285,7 @@ hndmem_activepda_bank_config(si_t *sih, hndmem_type_t mem,
 		goto exit;
 	}
 
-	if (GCIREV(sih->gcirev) >= 9) {
+	if (sih->gcirev >= 9) {
 		gciregs = si_setcore(sih, GCI_CORE_ID, 0);
 
 		reg_data = ((mem &
@@ -319,7 +325,7 @@ hndmem_sleeppda_config(si_t *sih, hndmem_type_t mem, hndmem_config_t config)
 	int err = BCME_OK;
 
 	/* Sleep PDA is supported only by GCI rev >= 9 */
-	if (GCIREV(sih->gcirev) < 9) {
+	if (sih->gcirev < 9) {
 		err = BCME_UNSUPPORTED;
 		goto exit;
 	}

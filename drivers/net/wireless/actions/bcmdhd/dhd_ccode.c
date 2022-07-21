@@ -243,7 +243,7 @@ int
 dhd_ccode_map_country_list(dhd_pub_t *dhd, wl_country_t *cspec)
 {
 	int bcmerror = -1, i;
-	uint chip = dhd->conf->chip, chiprev = dhd->conf->chiprev;
+	uint chip = dhd->conf->chip, chiprev = dhd->conf->chiprev; 
 	const char *ccode_list = NULL, *ccode_ww = NULL;
 	char *pch;
 

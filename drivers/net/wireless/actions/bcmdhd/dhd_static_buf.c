@@ -6,7 +6,7 @@
 #include <linux/err.h>
 #include <linux/skbuff.h>
 
-#define	DHD_STATIC_VERSION_STR		"101.10.361.16 (wlan=r892223-20220401-1)"
+#define	DHD_STATIC_VERSION_STR		"101.10.361.12 (wlan=r892223-20210928-1)"
 #define STATIC_ERROR_LEVEL	(1 << 0)
 #define STATIC_TRACE_LEVEL	(1 << 1)
 #define STATIC_MSG_LEVEL	(1 << 0)
@@ -96,7 +96,7 @@ enum dhd_prealloc_index {
 #define DHD_PREALLOC_DATABUF_SIZE	(64 * 1024)
 #define DHD_PREALLOC_OSL_BUF_SIZE	(STATIC_BUF_MAX_NUM * STATIC_BUF_SIZE)
 #define DHD_PREALLOC_WIPHY_ESCAN0_SIZE	(64 * 1024)
-#define DHD_PREALLOC_DHD_INFO_SIZE	(36 * 1024)
+#define DHD_PREALLOC_DHD_INFO_SIZE	(34 * 1024)
 #if defined(CONFIG_BCMDHD_VTS) || defined(CONFIG_BCMDHD_DEBUG)
 #define DHD_PREALLOC_MEMDUMP_RAM_SIZE	(1290 * 1024)
 #endif /* CONFIG_BCMDHD_VTS | CONFIG_BCMDHD_DEBUG */
@@ -183,15 +183,11 @@ dhd_wlan_mem_prealloc(
 	int section, unsigned long size)
 {
 #ifndef BCMDHD_MDRIVER
+	uint bus_type = 0;
 	int index = 0;
 #endif
-
-#ifdef BCMDHD_MDRIVER
 	DHD_STATIC_MSG("bus_type %d, index %d, sectoin %d, size %ld\n",
 		bus_type, index, section, size);
-#else
-	DHD_STATIC_MSG("sectoin %d, size %ld\n", section, size);
-#endif
 
 	if (section == DHD_PREALLOC_PROT)
 		return wlan_static_prot[index];

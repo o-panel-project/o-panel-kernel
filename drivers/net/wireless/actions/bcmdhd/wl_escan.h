@@ -2,9 +2,7 @@
 #ifndef _wl_escan_
 #define _wl_escan_
 #include <linuxver.h>
-#if defined(WL_WIRELESS_EXT)
 #include <wl_iw.h>
-#endif /* WL_WIRELESS_EXT */
 #include <wl_iapsta.h>
 #include <wl_android_ext.h>
 #include <dhd_config.h>
@@ -75,10 +73,8 @@ bool wl_escan_mesh_peer(struct net_device *dev,
 #endif /* WLMESH */
 
 int wl_escan_set_scan(struct net_device *dev, wl_scan_info_t *scan_info);
-#if defined(WL_WIRELESS_EXT)
 int wl_escan_get_scan(struct net_device *dev,
 	struct iw_request_info *info, struct iw_point *dwrq, char *extra);
-#endif
 int wl_escan_attach(struct net_device *dev);
 void wl_escan_detach(struct net_device *dev);
 int wl_escan_event_attach(struct net_device *dev, int ifidx);
@@ -87,3 +83,4 @@ int wl_escan_up(struct net_device *dev);
 void wl_escan_down(struct net_device *dev);
 
 #endif /* _wl_escan_ */
+

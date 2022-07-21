@@ -57,6 +57,7 @@ dhd_wlan_set_power(int on, wifi_adapter_info_t *adapter)
 				return -EIO;
 			}
 		}
+
 #ifdef BUS_POWER_RESTORE
 #ifdef BCMSDIO
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
@@ -136,18 +137,28 @@ static int dhd_wlan_set_carddetect(int present)
 	if (present) {
 #if defined(BCMSDIO)
 		printf("======== Card detection to detect SDIO card! ========\n");
-#ifdef CUSTOMER_ACTION//CUSTOMER_HW_PLATFORM
-		err = pdata->set_carddetect(1);//sdhci_force_presence_change(&sdmmc_channel, 1);
+#ifdef CUSTOMER_HW_PLATFORM
+		err = sdhci_force_presence_change(&sdmmc_channel, 1);
 #endif /* CUSTOMER_HW_PLATFORM */
+
+#ifdef CUSTOMER_ACTION
+		err = pdata->set_carddetect(1);//sdhci_force_presence_change(&sdmmc_channel, 1);
+#endif /* CUSTOMER_ACTION */
+
 #elif defined(BCMPCIE)
 		printf("======== Card detection to detect PCIE card! ========\n");
 #endif
 	} else {
 #if defined(BCMSDIO)
 		printf("======== Card detection to remove SDIO card! ========\n");
-#ifdef CUSTOMER_ACTION//CUSTOMER_HW_PLATFORM
-		err = pdata->set_carddetect(0);//sdhci_force_presence_change(&sdmmc_channel, 0);
+#ifdef CUSTOMER_HW_PLATFORM
+		err = sdhci_force_presence_change(&sdmmc_channel, 0);
 #endif /* CUSTOMER_HW_PLATFORM */
+
+#ifdef CUSTOMER_ACTION
+		err = pdata->set_carddetect(0);//sdhci_force_presence_change(&sdmmc_channel, 0);
+#endif /* CUSTOMER_ACTION */
+
 #elif defined(BCMPCIE)
 		printf("======== Card detection to remove PCIE card! ========\n");
 #endif
@@ -291,13 +302,13 @@ int dhd_wlan_init_gpio(wifi_adapter_info_t *adapter)
 
 	if (gpio_wl_reg_on >= 0) {
 		err = gpio_request(gpio_wl_reg_on, "WL_REG_ON");
-		//sunlei D @20220613 start
+        //sunlei D @20220613 start
 		/*if (err < 0) {
 			printf("%s: gpio_request(%d) for WL_REG_ON failed\n",
 				__FUNCTION__, gpio_wl_reg_on);
 			gpio_wl_reg_on = -1;
 		}*/
-		//sunlei end
+        //sunlei end
 	}
 	adapter->gpio_wl_reg_on = gpio_wl_reg_on;
 
@@ -392,3 +403,4 @@ void dhd_wlan_deinit_plat_data(wifi_adapter_info_t *adapter)
 #endif
 	dhd_wlan_deinit_gpio(adapter);
 }
+

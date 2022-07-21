@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD), Generic work queue framework
  * Generic interface to handle dhd deferred work events
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -18,10 +18,14 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
+ *
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id$
+ * $Id: dhd_linux_wq.c 815919 2019-04-22 09:06:50Z $
  */
 
 #include <linux/init.h>
@@ -42,11 +46,6 @@
 #include <dhd_dbg.h>
 #include <dhd_linux_wq.h>
 
-/*
- * XXX: always make sure that the size of this structure is aligned to
- * the power of 2 (2^n) i.e, if any new variable has to be added then
- * modify the padding accordingly
- */
 typedef struct dhd_deferred_event {
 	u8 event;		/* holds the event */
 	void *event_data;	/* holds event specific data */
@@ -106,7 +105,6 @@ static inline void
 dhd_kfifo_free(struct kfifo *fifo)
 {
 	kfifo_free(fifo);
-	kfree(fifo);
 }
 
 /* deferred work functions */
@@ -371,13 +369,6 @@ dhd_deferred_work_handler(struct work_struct *work)
 			ASSERT(work_event.event < DHD_MAX_WQ_EVENTS);
 			continue;
 		}
-
-		/*
-		 * XXX: don't do NULL check for 'work_event.event_data'
-		 * as for some events like DHD_WQ_WORK_DHD_LOG_DUMP the
-		 * event data is always NULL even though rest of the
-		 * event parameters are valid
-		 */
 
 		if (work_event.event_handler) {
 			work_event.event_handler(deferred_work->dhd_info,

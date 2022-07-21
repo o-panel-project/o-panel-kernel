@@ -2,7 +2,7 @@
  * OS Abstraction Layer Extension - the APIs defined by the "extension" API
  * are only supported by a subset of all operating systems.
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -18,8 +18,14 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * <<Broadcom-WL-IPTag/Dual:>>
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: osl_ext.h 759145 2018-04-24 05:09:37Z $
  */
 
 #ifndef _osl_ext_h_
@@ -27,15 +33,21 @@
 
 /* ---- Include Files ---------------------------------------------------- */
 
-#if defined(THREADX)
+#if defined(TARGETOS_symbian)
+	#include <e32def.h>
+	#include <symbian_osl_ext.h>
+#elif defined(THREADX)
 	#include <threadx_osl_ext.h>
 #else
 	#define OSL_EXT_DISABLED
-#endif
+#endif // endif
+
+/* Include base operating system abstraction. */
+#include <osl.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif // endif
 
 /* ---- Constants and Types ---------------------------------------------- */
 
@@ -49,11 +61,9 @@ typedef enum osl_ext_status_t
 	OSL_EXT_TIMEOUT
 
 } osl_ext_status_t;
-
 #define OSL_EXT_STATUS_DECL(status)	osl_ext_status_t status;
 
 #define OSL_EXT_TIME_FOREVER ((osl_ext_time_ms_t)(-1))
-
 typedef unsigned int osl_ext_time_ms_t;
 typedef unsigned int osl_ext_time_us_t;
 
@@ -92,7 +102,6 @@ typedef void (*osl_ext_task_entry)(osl_ext_task_arg_t arg);
 typedef enum
 {
 	OSL_EXT_TASK_IDLE_PRIORITY,
-	OSL_EXT_TASK_CPUUTIL_PRIORITY,
 	OSL_EXT_TASK_LOW_PRIORITY,
 	OSL_EXT_TASK_LOW_NORMAL_PRIORITY,
 	OSL_EXT_TASK_NORMAL_PRIORITY,
@@ -389,22 +398,6 @@ osl_ext_status_t osl_ext_task_create_ex(char* name,
 	bool autostart, osl_ext_task_t *task);
 
 /****************************************************************************
-* Function:   osl_ext_task_change_priority
-*
-* Purpose:    Change priority of a task.
-*
-* Parameters: task
-*             new_priority   (in)  New task priority.
-*             old_priority   (out) Old task priroty.
-*
-* Returns:    OSL_EXT_SUCCESS if the task was created successfully, or an
-*             error code if the priority could not be changed..
-*****************************************************************************
-*/
-osl_ext_status_t osl_ext_task_change_priority(osl_ext_task_t *task,
-	osl_ext_task_priority_t new_priority, osl_ext_task_priority_t *old_priority);
-
-/****************************************************************************
 * Function:   osl_ext_task_delete
 *
 * Purpose:    Destroy a task.
@@ -428,6 +421,19 @@ osl_ext_status_t osl_ext_task_delete(osl_ext_task_t *task);
 *****************************************************************************
 */
 osl_ext_task_t *osl_ext_task_current(void);
+
+/****************************************************************************
+* Function:   osl_ext_task_yield
+*
+* Purpose:    Yield the CPU to other tasks of the same priority that are
+*             ready-to-run.
+*
+* Parameters: None.
+*
+* Returns:    OSL_EXT_SUCCESS if successful, else error code.
+*****************************************************************************
+*/
+osl_ext_status_t osl_ext_task_yield(void);
 
 /****************************************************************************
 * Function:   osl_ext_task_yield
@@ -747,13 +753,13 @@ void osl_ext_interrupt_restore(osl_ext_interrupt_state_t state);
 	(OSL_EXT_SUCCESS)
 #define osl_ext_event_set(event, event_bits)		(OSL_EXT_SUCCESS)
 
-#define osl_ext_interrupt_disable(void)			(0)
+#define osl_ext_interrupt_disable(void)
 #define osl_ext_interrupt_restore(state)
 
 #endif	/* OSL_EXT_DISABLED */
 
 #ifdef __cplusplus
 }
-#endif
+#endif // endif
 
 #endif	/* _osl_ext_h_ */

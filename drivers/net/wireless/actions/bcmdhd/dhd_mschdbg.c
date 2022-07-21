@@ -1,7 +1,9 @@
 /*
  * DHD debugability support
  *
- * Copyright (C) 2020, Broadcom.
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * Copyright (C) 1999-2019, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -17,10 +19,11 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: dhd_mschdbg.c 639872 2016-05-25 05:39:30Z sjadhav $
+ * $Id: dhd_mschdbg.c 639872 2016-05-25 05:39:30Z $
  */
 #ifdef SHOW_LOGTRACE
 #include <typedefs.h>
@@ -46,18 +49,7 @@ static const char *head_log = "";
 			for (ii = 0; ii < space; ii += 4) MSCH_EVENT(("    ")); \
 		} \
 	} while (0)
-
-#ifdef DHD_EFI
-#define MSCH_EVENT(args) \
-do {	\
-	if (dhd_msg_level & DHD_EVENT_VAL) {	\
-		DHD_LOG_DUMP_WRITE_FW("[%s]: ", dhd_log_dump_get_timestamp()); \
-		DHD_LOG_DUMP_WRITE_FW args; \
-	}	\
-} while (0)
-#else
 #define MSCH_EVENT(args) do {if (dhd_msg_level & DHD_EVENT_VAL) printf args;} while (0)
-#endif /* DHD_EFI */
 
 static uint64 solt_start_time[4], req_start_time[4], profiler_start_time[4];
 static uint32 solt_chanspec[4] = {0, }, req_start[4] = {0, };
@@ -203,7 +195,7 @@ dhd_mschdbg_timeslot_profiler_event_data(int sp, int ver, char *title, char *dat
 		MSCH_EVENT(("0x%08x\n", ntoh32(p->p_timeslot)));
 
 	s = (int)(ntoh32(p->state));
-	if (s < 0 || s > 5) s = 0;
+	if (s > 5) s = 0;
 
 	MSCH_EVENT_HEAD(sn);
 	MSCH_EVENT(("id: %d, state[%d]: %s, chan_ctxt: [0x%08x]\n",
