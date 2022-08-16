@@ -67,7 +67,8 @@
 
 		serial3_state_default: serial3_default{
 			serial_3{
-				actions,groups = "mfp2_21","mfp2_20","uart3_dummy";
+				/*actions,groups = "mfp2_21","mfp2_20","uart3_dummy";*/
+				actions,groups = "uart3_dummy";
 				actions,function = "uart3";
 			};
 		};
