@@ -1,35 +1,10 @@
 /*
- * Copyright (C) 1999-2019, Broadcom.
- *
- *      Unless you and Broadcom execute a separate written software license
- * agreement governing use of this software, this software is licensed to you
- * under the terms of the GNU General Public License version 2 (the "GPL"),
- * available at http://www.broadcom.com/licenses/GPLv2.php, with the
- * following added to such license:
- *
- *      As a special exception, the copyright holders of this software give you
- * permission to link this software with independent modules, and to copy and
- * distribute the resulting executable under terms of your choice, provided that
- * you also meet, for each linked independent module, the terms and conditions of
- * the license of that module.  An independent module is a module which is not
- * derived from this software.  The special exception does not apply to any
- * modifications of the software.
- *
- *      Notwithstanding the above, under no circumstances may you combine this
- * software in any way with any other Broadcom software provided under a license
- * other than the GPL, without Broadcom's express prior written consent.
- *
- *
- * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: typedefs.h 742663 2018-01-23 06:57:52Z $
+ * $Copyright Open Broadcom Corporation$
+ * $Id: typedefs.h 484281 2014-06-12 22:42:26Z $
  */
 
 #ifndef _TYPEDEFS_H_
 #define _TYPEDEFS_H_
-
-#if (!defined(EDK_RELEASE_VERSION) || (EDK_RELEASE_VERSION < 0x00020000)) || \
-	!defined(BWL_NO_INTERNAL_STDLIB_SUPPORT)
 
 #ifdef SITE_TYPEDEFS
 
@@ -62,33 +37,36 @@
 #define TYPEDEF_BOOL
 #ifndef FALSE
 #define FALSE	false
-#endif // endif
+#endif
 #ifndef TRUE
 #define TRUE	true
-#endif // endif
+#endif
 
 #else	/* ! __cplusplus */
 
+
 #endif	/* ! __cplusplus */
 
-#if !defined(TYPEDEF_UINTPTR)
 #if defined(__LP64__)
 #define TYPEDEF_UINTPTR
 typedef unsigned long long int uintptr;
-#endif // endif
-#endif /* TYPEDEF_UINTPTR */
+#endif
 
-/* float_t types conflict with the same typedefs from the standard ANSI-C
-** math.h header file. Don't re-typedef them here.
-*/
+
+
+
 
 #if defined(_NEED_SIZE_T_)
 typedef long unsigned int size_t;
-#endif // endif
+#endif
+
+
+
+
 
 #if defined(__sparc__)
 #define TYPEDEF_ULONG
-#endif // endif
+#endif
 
 /*
  * If this is either a Linux hybrid build or the per-port code of a hybrid build
@@ -97,6 +75,7 @@ typedef long unsigned int size_t;
  * a duplicate typedef error; there is no way to "undefine" a typedef.
  * We know when it's per-port code because each file defines LINUX_PORT at the top.
  */
+#if !defined(LINUX_HYBRID) || defined(LINUX_PORT)
 #define TYPEDEF_UINT
 #ifndef TARGETENV_android
 #define TYPEDEF_USHORT
@@ -112,9 +91,11 @@ typedef long unsigned int size_t;
 #include <linux/compiler.h>
 #ifdef noinline_for_stack
 #define TYPEDEF_BOOL
-#endif // endif
+#endif
 #endif	/* == 2.6.18 */
 #endif	/* __KERNEL__ */
+#endif  /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
+
 
 /* Do not support the (u)int64 types with strict ansi for GNU C */
 #if defined(__GNUC__) && defined(__STRICT_ANSI__)
@@ -131,7 +112,7 @@ typedef long unsigned int size_t;
 
 #if defined(__STDC__)
 #define TYPEDEF_UINT64
-#endif // endif
+#endif
 
 #endif /* __ICL */
 
@@ -141,7 +122,9 @@ typedef long unsigned int size_t;
 #if defined(__KERNEL__)
 
 /* See note above */
+#if !defined(LINUX_HYBRID) || defined(LINUX_PORT)
 #include <linux/types.h>	/* sys/types.h and linux/types.h are oil and water */
+#endif /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
 
 #else
 
@@ -149,12 +132,14 @@ typedef long unsigned int size_t;
 
 #endif /* linux && __KERNEL__ */
 
-#endif // endif
+#endif 
+
 
 /* use the default typedefs in the next section of this file */
 #define USE_TYPEDEF_DEFAULTS
 
 #endif /* SITE_TYPEDEFS */
+
 
 /*
  * Default Typedefs
@@ -171,67 +156,67 @@ typedef	/* @abstract@ */ unsigned char	bool;
 
 #ifndef TYPEDEF_UCHAR
 typedef unsigned char	uchar;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_USHORT
 typedef unsigned short	ushort;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_UINT
 typedef unsigned int	uint;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_ULONG
 typedef unsigned long	ulong;
-#endif // endif
+#endif
 
 /* define [u]int8/16/32/64, uintptr */
 
 #ifndef TYPEDEF_UINT8
 typedef unsigned char	uint8;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_UINT16
 typedef unsigned short	uint16;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_UINT32
 typedef unsigned int	uint32;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_UINT64
 typedef unsigned long long uint64;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_UINTPTR
 typedef unsigned int	uintptr;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_INT8
 typedef signed char	int8;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_INT16
 typedef signed short	int16;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_INT32
 typedef signed int	int32;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_INT64
 typedef signed long long int64;
-#endif // endif
+#endif
 
 /* define float32/64, float_t */
 
 #ifndef TYPEDEF_FLOAT32
 typedef float		float32;
-#endif // endif
+#endif
 
 #ifndef TYPEDEF_FLOAT64
 typedef double		float64;
-#endif // endif
+#endif
 
 /*
  * abstracted floating point type allows for compile time selection of
@@ -245,7 +230,7 @@ typedef double		float64;
 typedef float32 float_t;
 #else /* default to double precision floating point */
 typedef float64 float_t;
-#endif // endif
+#endif
 
 #endif /* TYPEDEF_FLOAT_T */
 
@@ -253,23 +238,23 @@ typedef float64 float_t;
 
 #ifndef FALSE
 #define FALSE	0
-#endif // endif
+#endif
 
 #ifndef TRUE
 #define TRUE	1  /* TRUE */
-#endif // endif
+#endif
 
 #ifndef NULL
 #define	NULL	0
-#endif // endif
+#endif
 
 #ifndef OFF
 #define	OFF	0
-#endif // endif
+#endif
 
 #ifndef ON
 #define	ON	1  /* ON = 1 */
-#endif // endif
+#endif
 
 #define	AUTO	(-1) /* Auto = -1 */
 
@@ -277,7 +262,8 @@ typedef float64 float_t;
 
 #ifndef PTRSZ
 #define	PTRSZ	sizeof(char*)
-#endif // endif
+#endif
+
 
 /* Detect compiler type. */
 #if defined(__GNUC__) || defined(__lint)
@@ -286,7 +272,8 @@ typedef float64 float_t;
 	#define BWL_COMPILER_ARMCC
 #else
 	#error "Unknown compiler!"
-#endif // endif
+#endif 
+
 
 #ifndef INLINE
 	#if defined(BWL_COMPILER_MICROSOFT)
@@ -297,7 +284,7 @@ typedef float64 float_t;
 		#define INLINE	__inline
 	#else
 		#define INLINE
-	#endif
+	#endif 
 #endif /* INLINE */
 
 #undef TYPEDEF_BOOL
@@ -325,39 +312,6 @@ typedef float64 float_t;
 
 /* Avoid warning for discarded const or volatile qualifier in special cases (-Wcast-qual) */
 #define DISCARD_QUAL(ptr, type) ((type *)(uintptr)(ptr))
-
-#else /* !EDK_RELEASE_VERSION || (EDK_RELEASE_VERSION < 0x00020000) */
-
-#include <sys/types.h>
-#include <strings.h>
-#include <stdlib.h>
-
-#ifdef stderr
-#undef stderr
-#define stderr stdout
-#endif // endif
-
-typedef UINT8   uint8;
-typedef UINT16  uint16;
-typedef UINT32  uint32;
-typedef UINT64  uint64;
-typedef INT8    int8;
-typedef INT16   int16;
-typedef INT32   int32;
-typedef INT64   int64;
-
-typedef BOOLEAN       bool;
-typedef unsigned char uchar;
-typedef UINTN         uintptr;
-
-#define UNUSED_PARAMETER(x) (void)(x)
-#define DISCARD_QUAL(ptr, type) ((type *)(uintptr)(ptr))
-#define INLINE
-#define	AUTO	(-1) /* Auto = -1 */
-#define	ON	1  /* ON = 1 */
-#define	OFF	0
-
-#endif /* !EDK_RELEASE_VERSION || (EDK_RELEASE_VERSION < 0x00020000) */
 
 /*
  * Including the bcmdefs.h here, to make sure everyone including typedefs.h

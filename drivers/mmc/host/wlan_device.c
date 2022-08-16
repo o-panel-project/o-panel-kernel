@@ -15,6 +15,36 @@
 static void (*wifi_detect_func)(int card_present, void *dev_id);
 static void *wifi_detect_param;
 
+//sunlei A:@20220813 for wifi module detect start
+static int wlan_detect_is_ready=0;
+static unsigned int wlan_id=0;
+static int set_wlan_detect_state(int is_ready)
+{
+	wlan_detect_is_ready = is_ready;
+	pr_err("sunlei %s: wlan_detect_is_ready=%d\n", __FUNCTION__, wlan_detect_is_ready);
+	return wlan_detect_is_ready;
+}
+EXPORT_SYMBOL(set_wlan_detect_state);
+static int get_wlan_detect_state(void)
+{
+	pr_err("sunlei %s: wlan_detect_is_ready=%d\n", __FUNCTION__, wlan_detect_is_ready);
+	return wlan_detect_is_ready;
+}
+EXPORT_SYMBOL(get_wlan_detect_state);
+static unsigned int set_wlan_id(unsigned int id)
+{
+	wlan_id = id;
+	pr_err("sunlei %s: wlan_id=0x%08X\n", __FUNCTION__, wlan_id);
+	return wlan_id;
+}
+EXPORT_SYMBOL(set_wlan_id);
+static unsigned int get_wlan_id(void)
+{
+	pr_err("sunlei %s: wlan_id=0x%08X\n", __FUNCTION__, wlan_id);
+	return wlan_id;
+}
+EXPORT_SYMBOL(get_wlan_id);
+//sunlei A end
 
 static void wlan_status_check(int card_present, void *dev_id)
 {
@@ -84,7 +114,7 @@ static int wlan_init(struct wlan_plat_data *pdata)
 		pr_err("No \"wifi,bt,power,ctl\" node found in dts\n");		
 		goto fail;
 	}
-
+	pr_err("sunlei wlan_init!!!!!!!!!!!!!!\n");
 	/* wifi en */
 	if (of_find_property(np, "wifi_en_gpios", NULL)) {
 		pdata->wifi_en_gpios = of_get_named_gpio(np,
@@ -123,7 +153,7 @@ static int wlan_set_power(struct wlan_plat_data *pdata, int on)
 	}
 
 	mdelay(20);
-
+	pr_err("sunlei wlan_set_power %d\n", on);
 	return 0;
 }
 
@@ -173,6 +203,9 @@ int acts_wlan_bt_power_init(struct wlan_plat_data *pdata)
 
 	g_pdata = pdata;
 
+	//sunlei
+	pr_err("sunlei acts_wlan_bt_power_init!!!!!!!!!!!!!\n");
+
 	np = of_find_compatible_node(NULL, NULL, "wifi,bt,power,ctl");	
 	if (NULL == np) {
 		pr_err("No \"wifi,bt,power,ctl\" node found in dts\n");		
@@ -195,6 +228,7 @@ int acts_wlan_bt_power_init(struct wlan_plat_data *pdata)
 			pr_err("gpio for sdio wifi power supply invalid.\n");
 		}
 	}
+
 	return 0;
 
 fail:
@@ -213,3 +247,4 @@ void acts_wlan_status_check_register(struct gl520xmmc_host *host)
 {
 	wlan_status_check_register(wlan_status_check, host);
 }
+

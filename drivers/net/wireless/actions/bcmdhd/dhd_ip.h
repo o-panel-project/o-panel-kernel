@@ -3,40 +3,19 @@
  *
  * Provides type definitions and function prototypes used to parse ip packet.
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * $Copyright Open Broadcom Corporation$
  *
- *      Unless you and Broadcom execute a separate written software license
- * agreement governing use of this software, this software is licensed to you
- * under the terms of the GNU General Public License version 2 (the "GPL"),
- * available at http://www.broadcom.com/licenses/GPLv2.php, with the
- * following added to such license:
- *
- *      As a special exception, the copyright holders of this software give you
- * permission to link this software with independent modules, and to copy and
- * distribute the resulting executable under terms of your choice, provided that
- * you also meet, for each linked independent module, the terms and conditions of
- * the license of that module.  An independent module is a module which is not
- * derived from this software.  The special exception does not apply to any
- * modifications of the software.
- *
- *      Notwithstanding the above, under no circumstances may you combine this
- * software in any way with any other Broadcom software provided under a license
- * other than the GPL, without Broadcom's express prior written consent.
- *
- *
- * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: dhd_ip.h 790572 2018-11-26 11:03:46Z $
+ * $Id: dhd_ip.h 502735 2014-09-16 00:53:02Z $
  */
 
 #ifndef _dhd_ip_h_
 #define _dhd_ip_h_
 
-#if defined(DHDTCPACK_SUPPRESS) || defined(DHDTCPSYNC_FLOOD_BLK)
+#ifdef DHDTCPACK_SUPPRESS
 #include <dngl_stats.h>
 #include <bcmutils.h>
 #include <dhd.h>
-#endif /* DHDTCPACK_SUPPRESS || DHDTCPSYNC_FLOOD_BLK */
+#endif /* DHDTCPACK_SUPPRESS */
 
 typedef enum pkt_frag
 {
@@ -47,17 +26,7 @@ typedef enum pkt_frag
 } pkt_frag_t;
 
 extern pkt_frag_t pkt_frag_info(osl_t *osh, void *p);
-
-#ifdef DHDTCPSYNC_FLOOD_BLK
-typedef enum tcp_hdr_flags {
-	FLAG_SYNC,
-	FLAG_SYNCACK,
-	FLAG_RST,
-	FLAG_OTHERS
-} tcp_hdr_flag_t;
-
-extern tcp_hdr_flag_t dhd_tcpdata_get_flag(dhd_pub_t *dhdp, void *pkt);
-#endif /* DHDTCPSYNC_FLOOD_BLK */
+extern bool pkt_is_dhcp(osl_t *osh, void *p);
 
 #ifdef DHDTCPACK_SUPPRESS
 #define	TCPACKSZMIN	(ETHER_HDR_LEN + IPV4_MIN_HEADER_LEN + TCP_MIN_HEADER_LEN)
@@ -71,15 +40,8 @@ extern tcp_hdr_flag_t dhd_tcpdata_get_flag(dhd_pub_t *dhdp, void *pkt);
 
 #define TCPDATA_INFO_TIMEOUT 5000	/* Remove tcpdata_info if inactive for this time (in ms) */
 
-#define DEFAULT_TCPACK_SUPP_RATIO 3
-#ifndef CUSTOM_TCPACK_SUPP_RATIO
-#define CUSTOM_TCPACK_SUPP_RATIO DEFAULT_TCPACK_SUPP_RATIO
-#endif /* CUSTOM_TCPACK_SUPP_RATIO */
-
-#define DEFAULT_TCPACK_DELAY_TIME 10 /* ms */
-#ifndef CUSTOM_TCPACK_DELAY_TIME
-#define CUSTOM_TCPACK_DELAY_TIME DEFAULT_TCPACK_DELAY_TIME
-#endif /* CUSTOM_TCPACK_DELAY_TIME */
+#define TCPACK_SUPP_RATIO 3
+#define TCPACK_DELAY_TIME 10 /* ms */
 
 extern int dhd_tcpack_suppress_set(dhd_pub_t *dhdp, uint8 on);
 extern void dhd_tcpack_info_tbl_clean(dhd_pub_t *dhdp);

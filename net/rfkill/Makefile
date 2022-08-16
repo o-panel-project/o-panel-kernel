@@ -8,6 +8,9 @@ obj-$(CONFIG_RFKILL)		+= rfkill.o
 obj-$(CONFIG_RFKILL_REGULATOR)	+= rfkill-regulator.o
 obj-$(CONFIG_RFKILL_GPIO)	+= rfkill-gpio.o
 
+#sunlei A:@20220808 for wlan detect
+obj-$(CONFIG_RFKILL_WLAN_DETECT)	+= rfkill-wlan_detect.o
+
 #
 # Actions
 #
