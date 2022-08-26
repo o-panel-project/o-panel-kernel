@@ -12864,7 +12864,7 @@ static int
 dhd_module_init(void)
 {
 	int err;
-	int retry = 0;
+	int retry = POWERUP_MAX_RETRY;
 
 	printf("%s: in %s\n", __FUNCTION__, dhd_version);
 
@@ -12939,22 +12939,25 @@ static int wifi_init_thread(void *data)
 	return 0;
 }
 
-int huida_wifi_init_module(void)
+static int __init
+huida_wifi_init_module(void)
 {
 	struct task_struct *kthread = NULL;
-	pr_err("sulei huida_wifi_init_module =================\n");
+	//pr_err("sunlei huida_wifi_init_module =================\n");
 
 	//wait wlan detect success
 	while(1){
 		if(get_wlan_detect_state()==WLAN_DETECT_IS_READY){
-			pr_err("sulei huida_wifi_init_module bcmdhd2 wait WLAN_DETECT_IS_READY ......\n");
+			pr_err("sunlei bcmdhd2 WLAN_DETECT_IS_READY ......\n");
 			break;
 		}
 		mdelay(20);
 	}
 
-	if(get_wlan_id()==0x02d04330/*AP6330*/)
+	if(get_wlan_id()==0x02d04330/*AP6330*/) {
+		pr_err("sunlei bcmdhd2 0x4330 chip, not mine.\n");
 		return -1;
+	}
 
 	kthread = kthread_run(wifi_init_thread, NULL, "wifi_init_thread");
 	if (IS_ERR(kthread))
@@ -12963,10 +12966,12 @@ int huida_wifi_init_module(void)
 	return 0;
 }
 
-void huida_wifi_exit_module(void)
+static void __exit
+huida_wifi_exit_module(void)
 {
 	dhd_module_exit();
 }
+
 #ifdef CONFIG_WIFI_BUILD_MODULE
 module_init(huida_wifi_init_module);
 module_exit(huida_wifi_exit_module);
@@ -12975,7 +12980,7 @@ module_exit(huida_wifi_exit_module);
 late_initcall(huida_wifi_init_module);
 module_exit(huida_wifi_exit_module);
 #else
-module_init(huida_wifi_init_module);
+late_initcall(huida_wifi_init_module);
 module_exit(huida_wifi_exit_module);
 #endif
 #endif

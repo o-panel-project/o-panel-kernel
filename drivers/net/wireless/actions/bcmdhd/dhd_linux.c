@@ -7684,32 +7684,20 @@ dhd_module_shutdown(void)
 	dhd_wifi_platform_unregister_drv();
 }
 
-static void __exit
+static void
 dhd_module_exit(void)
 {
 	dhd_module_cleanup();
 	unregister_reboot_notifier(&dhd_reboot_notifier);
 }
 
-static int __init
+static int
 dhd_module_init(void)
 {
 	int err;
 	int retry = POWERUP_MAX_RETRY;
 
-	printf("%s: in\n", __FUNCTION__);
-	
-	//wait wlan detect success
-	while(1){
-		if(get_wlan_detect_state()==WLAN_DETECT_IS_READY){
-			pr_err("sulei bcmdhd wait WLAN_DETECT_IS_READY ......\n");
-			break;
-		}
-		mdelay(20);
-	}
-
-	if(get_wlan_id()!=0x02d04330/*AP6330*/)
-		return -1;
+	printf("%s: %s\n", __FUNCTION__, dhd_version);
 
 #ifdef CUSTOMER_ACTION
 	err = acts_wifi_init(WIFI_TYPE_BCMDHD, &dhd_module_shutdown);
@@ -7768,7 +7756,40 @@ dhd_reboot_callback(struct notifier_block *this, unsigned long code, void *unuse
 	return NOTIFY_DONE;
 }
 
+static int wifi_init_thread(void *data)
+{
+	return dhd_module_init();
+}
 
+static int __init
+wpc_wifi_init_module(void)
+{
+	//pr_err("sunlei huida_wifi_init_module =================\n");
+
+	//wait wlan detect success
+	while(1){
+		if(get_wlan_detect_state()==WLAN_DETECT_IS_READY){
+			pr_err("sunlei bcmdhd WLAN_DETECT_IS_READY ......\n");
+			break;
+		}
+		mdelay(20);
+	}
+
+	if(get_wlan_id()!=0x02d04330/*AP6330*/) {
+		pr_err("sunlei bcmdhd not 0x4330 chip, not mine.\n");
+		return -1;
+	}
+
+	return wifi_init_thread(NULL);
+}
+
+static void __exit
+wpc_wifi_exit_module(void)
+{
+	dhd_module_exit();
+}
+
+#if 0
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 #if defined(CONFIG_DEFERRED_INITCALLS)
 deferred_module_init(dhd_module_init);
@@ -7780,8 +7801,10 @@ late_initcall(dhd_module_init);
 #else
 module_init(dhd_module_init);
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0) */
+#endif
 
-module_exit(dhd_module_exit);
+late_initcall(wpc_wifi_init_module);
+module_exit(wpc_wifi_exit_module);
 
 /*
  * OS specific functions required to implement DHD driver in OS independent way

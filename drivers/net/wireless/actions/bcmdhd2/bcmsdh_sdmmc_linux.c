@@ -159,16 +159,7 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	if (func == NULL)
 		return -EINVAL;
 
-	//sunlei A:@20220808 auto select bcmdhd,only support AP6203bm(vendor=0x02d0,device=0xa804)
-	#if 0
-	if((SDIO_VENDOR_ID_BROADCOM != func->vendor) || (BCM43012_CHIP_ID != func->device)) {
-		sd_err(("sunlei %s(bcmdhd) module not support, vendor=%04x,device=%04x\n", __FUNCTION__, func->vendor, func->device));
-		return -EINVAL;
-	}
-	#endif
-	//sunlei A end
-
-	sd_err(("%s: Enter(bcmdhd2) num=%d\n", __FUNCTION__, func->num));
+	sd_err(("bcmdhd2: %s Enter\n", __FUNCTION__));
 	sd_info(("sdio_bcmsdh: func->class=%x\n", func->class));
 	sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
 	sd_info(("sdio_device: 0x%04x\n", func->device));

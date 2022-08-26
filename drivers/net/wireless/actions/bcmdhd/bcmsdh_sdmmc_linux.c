@@ -95,8 +95,6 @@ MODULE_PARM_DESC(clockoverride, "SDIO card clock override");
 PBCMSDH_SDMMC_INSTANCE gInstance;
 #endif
 
-
-
 /* Maximum number of bcmsdh_sdmmc devices supported by driver */
 #define BCMSDH_SDMMC_MAX_DEVICES 1
 
@@ -179,16 +177,7 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	if (func == NULL)
 		return -EINVAL;
 
-	//sunlei A:@20220808 auto select bcmdhd,only support AP6203bm(vendor=0x02d0,device=0xa804)
-	#if 0
-	if((SDIO_VENDOR_ID_BROADCOM != func->vendor) || (SDIO_DEVICE_ID_BROADCOM_4330 != func->device)) {
-		sd_err(("sunlei %s(bcmdhd) module not support, vendor=%04x,device=%04x\n", __FUNCTION__, func->vendor, func->device));
-		return -EINVAL;
-	}
-	#endif
-	//sunlei A end
-
-	sd_err(("bcmsdh_sdmmc: %s Enter(bcmdhd)\n", __FUNCTION__));
+	sd_err(("bcmdhd: %s Enter\n", __FUNCTION__));
 	sd_info(("sdio_bcmsdh: func->class=%x\n", func->class));
 	sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
 	sd_info(("sdio_device: 0x%04x\n", func->device));
