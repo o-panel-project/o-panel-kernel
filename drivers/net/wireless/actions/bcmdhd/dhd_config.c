@@ -49,7 +49,7 @@ uint config_msg_level = CONFIG_ERROR_LEVEL;
 
 #ifdef CONFIG_PATH_AUTO_SELECT
 #ifdef BCMSDIO
-#define BCM4330B2_CONF_NAME "config_40183b2.txt"
+#define BCM4330B2_CONF_NAME	"config_ap6330.txt"	/*"config_40183b2.txt"*/
 #define BCM43362A0_CONF_NAME "config_40181a0.txt"
 #define BCM43362A2_CONF_NAME "config_40181a2.txt"
 #define BCM43438A0_CONF_NAME "config_43438a0.txt"
