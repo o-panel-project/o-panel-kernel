@@ -95,6 +95,14 @@ typedef enum
     ERR_DL_VERIFY_FAIL
 }E_UPGRADE_ERR_TYPE;
 
+//sunlei A:@20220815 start
+struct upgrade_module {
+    u8 id;
+    char vendor_name[16];
+    u8 *fw_file;
+    u32 fw_len;
+};
+//sunlei A end
 
 typedef unsigned char         FTS_BYTE;     //8 bit
 typedef unsigned short        FTS_WORD;    //16 bit

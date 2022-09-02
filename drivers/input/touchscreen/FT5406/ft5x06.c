@@ -148,6 +148,10 @@ volatile int current_val = 0;
 static unsigned gpio_reset = FT5X06_RESET_PIN;
 static unsigned reset_waitms = 50;
 
+//sunlei A:@20220815
+u8 gTP_Vendor_ID=0;
+//#define TP_VENDOR_ID_CHECK
+
 /*
   * I2C funcionts:
   * @ ft5x06_get_regs/ft5x06_get_reg
@@ -293,6 +297,60 @@ static unsigned char CTPM_FW[]=
     #include FT_APP_I(FIRM_I_FILE_NAME)
 };
 
+//sunlei A:@20220815 for show vendor id of touchpannel
+static unsigned char CTPM_FW_O2[]=
+{
+    //#include "5526_Ref_V13_D01_20220816_app.i"
+	#include "ACE1279_5526_Ref_V14_D01_20220830_app.i"
+};
+
+#define	FTS_MODULE_ID	0x79
+#define FTS_MODULE2_ID	0x7A
+
+#define FTS_MODULE_NAME		"O-Panel"
+#define FTS_MODULE2_NAME	"O2-Panel"
+
+struct upgrade_module module_list[] = {
+    {FTS_MODULE_ID, FTS_MODULE_NAME, CTPM_FW, sizeof(CTPM_FW)},
+    {FTS_MODULE2_ID, FTS_MODULE2_NAME, CTPM_FW_O2, sizeof(CTPM_FW_O2)},
+};
+
+static unsigned char ft5x0x_read_vendor_id(struct i2c_client *client)
+{
+	ft5x06_get_reg(client, FT5X0X_REG_FT5201ID, &gTP_Vendor_ID);
+	pr_err("sunlei %s vendor_id=%02X\n", __FUNCTION__, gTP_Vendor_ID);
+	return(gTP_Vendor_ID);
+}
+
+unsigned char get_module_firmware_index(unsigned char vendor_id)
+{
+	int i;
+	for(i=0; i<(sizeof(module_list)/sizeof(module_list[0])); i++)
+	{
+		if(module_list[i].id == vendor_id)
+			return i;
+	}
+	return 0;
+}
+
+#ifdef TP_VENDOR_ID_CHECK
+unsigned char fts_ctpm_get_i_file_vendor_id(void)
+{
+	u8 uFwIndex = get_module_firmware_index(gTP_Vendor_ID);
+	pr_err("sunlei %s uFwIndex=%d\n", __FUNCTION__, uFwIndex);
+	if(module_list[uFwIndex].fw_len > 2)
+	{
+		return module_list[uFwIndex].fw_file[module_list[uFwIndex].fw_len-1];
+	}
+    else
+    {
+        //TBD, error handling?
+        return 0xff; //default value
+    }
+}
+#endif //#if 0
+//sunlei A end
+
 static unsigned char ft5x0x_read_fw_ver(struct i2c_client *client)
 {
 	unsigned char ver;
@@ -302,12 +360,12 @@ static unsigned char ft5x0x_read_fw_ver(struct i2c_client *client)
 
 unsigned char fts_ctpm_get_i_file_ver(void)
 {
-    unsigned int ui_sz;
-    ui_sz = sizeof(CTPM_FW);
-    if (ui_sz > 2)
-    {
-        return CTPM_FW[ui_sz - 2];
-    }
+    u8 uFwIndex = get_module_firmware_index(gTP_Vendor_ID);
+	pr_err("sunlei %s uFwIndex=%d\n", __FUNCTION__, uFwIndex);
+	if(module_list[uFwIndex].fw_len > 2)
+	{
+		return module_list[uFwIndex].fw_file[module_list[uFwIndex].fw_len-2];
+	}
     else
     {
         //TBD, error handling?
@@ -716,9 +774,9 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
    int i_ret;
     
     //=========FW upgrade========================*/
-   pbt_buf = CTPM_FW;
-   /*call the upgrade function*/
-   i_ret =  fts_ctpm_fw_upgrade(client,pbt_buf,sizeof(CTPM_FW));
+	u8 uFwIndex = get_module_firmware_index(gTP_Vendor_ID);
+	pbt_buf = module_list[uFwIndex].fw_file;
+	i_ret =  fts_ctpm_fw_upgrade(client,pbt_buf,module_list[uFwIndex].fw_len);
    if (i_ret != 0)
    {
        printk("[FTS] upgrade failed i_ret = %d.\n", i_ret);
@@ -742,6 +800,22 @@ int fts_ctpm_auto_upg(struct i2c_client *client)
     unsigned char uc_host_fm_ver;
     unsigned char uc_tp_fm_ver;
     int           i_ret;
+
+	//sunlei A:@20220815 for vendor id detect
+	#ifdef TP_VENDOR_ID_CHECK
+	unsigned char uc_host_fm_verdor_id;
+	unsigned char uc_tp_fm_verdor_id;
+	uc_tp_fm_verdor_id = ft5x0x_read_vendor_id(client);
+	uc_host_fm_verdor_id = fts_ctpm_get_i_file_vendor_id();
+
+	printk("[FTS]uc_tp_fm_verdor_id=0x%02X uc_host_fm_verdor_id=0x%02X\n",uc_tp_fm_verdor_id,uc_host_fm_verdor_id);
+	if(uc_tp_fm_verdor_id != uc_host_fm_verdor_id)
+	{
+		printk("[FTS]sunlei TP firmware and .i file has different vendor id, update abort!");
+		return 0;
+	}
+	#endif//#if 0
+	//sunlei A end
 
     uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
     //printk("***uc_tp_fm_ver=%x\n",uc_tp_fm_ver);
@@ -912,11 +986,13 @@ enum {
 	FT5X06_IOCTL_FW_UPDATE_FORCE,
 	FT5X06_IOCTL_FW_DEFAULT_LOAD,
 	FT5X06_IOCTL_GET_VERSION,
+	FT5X06_IOCTL_GET_VENDOR_ID,//sunlei
 };
 #define IOCTL_FW_UPDATE     _IO('F', FT5X06_IOCTL_FW_UPDATE)
 #define IOCTL_FW_FUPDATE    _IO('F', FT5X06_IOCTL_FW_UPDATE_FORCE)
 #define IOCTL_FW_DEFAULT    _IO('F', FT5X06_IOCTL_FW_DEFAULT_LOAD)
 #define IOCTL_GET_VERSION   _IO('F', FT5X06_IOCTL_GET_VERSION)
+#define IOCTL_GET_VENDOR_ID   _IO('F', FT5X06_IOCTL_GET_VENDOR_ID) //sunlei
 
 static int ft5x06_fs_open(struct inode *node, struct file *fp)
 {
@@ -1010,6 +1086,13 @@ static long ft5x06_fs_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 		dev_info(&client->dev, "fw V09 force loader cmd\n");
 		ret = fts_ctpm_v09_load(client);
 		break;
+	//sunlei A:@20220815 for show vendor id of touchpannel
+	case IOCTL_GET_VENDOR_ID:
+		dev_info(&client->dev, "get vendor_id cmd\n");
+		ret = ft5x0x_read_vendor_id(client);
+		dev_info(&client->dev, "tp vendor_id 0x%ld\n", ret);
+		break;
+	//sunlei A end
 	default:
 		ret = -EINVAL;
 		break;
@@ -1055,7 +1138,7 @@ static int ft5x06_chardev_setup(struct ft5x06_device *ftdev)
 	}
 	ftdev->fw->size = 0;
 	ftdev->fw->data = NULL;
-	dev_info(&client->dev, "%s done(app_i=%d)\n", __func__, sizeof(CTPM_FW));
+	dev_info(&client->dev, "%s done(app_i=%d)\n", __func__, module_list[get_module_firmware_index(gTP_Vendor_ID)].fw_len);
 
 	return 0;
 }
@@ -1185,6 +1268,34 @@ static ssize_t info_store(struct device *dev,
     return count;
 }
 
+//sunlei A:@20220815 for show vendor id of touchpannel
+static ssize_t vendor_id_show(struct device *dev,
+        struct device_attribute *attr,char *buf)
+{
+    struct ft5x06_device *ftdevice = (struct ft5x06_device *)dev_get_drvdata(dev);
+
+    int ret;
+
+    ret = ft5x06_get_reg(ftdevice->client, FT5X0X_REG_FT5201ID, &gTP_Vendor_ID);
+    if ( ret ) {
+        FT5X06_WARNNING("get ft5201 vendor id failed");
+        goto err;
+    }
+
+    ret = sprintf(buf, "0x%02X\n", (int)gTP_Vendor_ID);
+    return ret;
+
+err:
+    return 0;
+}
+
+static ssize_t vendor_id_store(struct device *dev,
+        struct device_attribute *attr, const char *buf, size_t count)
+{
+    return count;
+}
+//sunlei A end
+
 static ssize_t rate_show(struct device *dev, 
         struct device_attribute *attr,char *buf)
 {
@@ -1208,7 +1319,7 @@ static ssize_t reset_store(struct device *dev,
         struct device_attribute *attr, const char *buf, size_t count)
 {
     int data;
-    struct ft5x06_device *ftdevice = (struct ft5x06_device *)dev_get_drvdata(dev);
+    //struct ft5x06_device *ftdevice = (struct ft5x06_device *)dev_get_drvdata(dev);
 
     sscanf(buf, "%d", &data);
     if ( data == 1 ) {
@@ -1391,6 +1502,8 @@ static struct device_attribute ft5x06_attr[] = {
     __ATTR(mode, S_IRUSR | S_IWUSR, mode_show, mode_store),
     __ATTR(debug, S_IRUSR | S_IWUSR, debug_show, debug_store),
     __ATTR(firmware_version, S_IRUSR | S_IWUSR, info_show, info_store), //  /sys/devices/b0174000.i2c/i2c-1/1-0038/firmware_version
+    //sunlei A:@20220815 for show vendor id of touchpannel
+    __ATTR(vendor_id, S_IRUSR | S_IWUSR, vendor_id_show, vendor_id_store), //  /sys/devices/b0174000.i2c/i2c-1/1-0038/vender_id
     __ATTR(scan_rate, S_IRUSR | S_IWUSR, rate_show, rate_store),
     __ATTR(reset, S_IRUSR | S_IWUSR, reset_show, reset_store),
 	__ATTR(reset_waitms, S_IRUSR | S_IWUSR,
@@ -2336,8 +2449,8 @@ static int ft5x06_probe(struct i2c_client *client,
 //* Modify by Hayden.Hu -- end
 #endif
 
-
-#if 0
+	ft5x0x_read_vendor_id(client);//sunlei A:@20220815 for read vendor id
+#if 0 //Disable firmware download, only update form app
     printk("ft5x06 probe v2.0 i file,FT5X0X_DOWNLOAD_FIRM=(%d)\n", FT5X0X_DOWNLOAD_FIRM);
 	#if (FT5X0X_DOWNLOAD_FIRM==1)
 printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
