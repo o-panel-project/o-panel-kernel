@@ -1039,7 +1039,7 @@ dhd_conf_copy_path(dhd_pub_t *dhd, char *dst_name, char *dst_path, char *src_pat
 }
 
 #ifdef CONFIG_PATH_AUTO_SELECT
-void
+void 
 dhd_conf_set_conf_name_by_chip(dhd_pub_t *dhd, char *conf_path)
 {
 #ifdef UPDATE_MODULE_NAME
@@ -1070,9 +1070,9 @@ dhd_conf_set_conf_name_by_chip(dhd_pub_t *dhd, char *conf_path)
 	name_ptr = &conf_path[i];
 
 	row_chip = dhd_conf_match_chip(dhd, DONT_CARE);
-	if (row_chip && strlen(row_chip->chip_name)) {
+	if (row_chip && strlen(row_chip->module_name)) {
 		strcpy(name_ptr, "config_");
-		strcat(name_ptr, row_chip->chip_name);
+		strcat(name_ptr, row_chip->module_name);
 		strcat(name_ptr, ".txt");
 	}
 
