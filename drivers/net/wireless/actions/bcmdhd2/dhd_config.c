@@ -1039,7 +1039,7 @@ dhd_conf_copy_path(dhd_pub_t *dhd, char *dst_name, char *dst_path, char *src_pat
 }
 
 #ifdef CONFIG_PATH_AUTO_SELECT
-void 
+void
 dhd_conf_set_conf_name_by_chip(dhd_pub_t *dhd, char *conf_path)
 {
 #ifdef UPDATE_MODULE_NAME
