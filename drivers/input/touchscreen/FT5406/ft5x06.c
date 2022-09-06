@@ -148,10 +148,6 @@ volatile int current_val = 0;
 static unsigned gpio_reset = FT5X06_RESET_PIN;
 static unsigned reset_waitms = 50;
 
-//sunlei A:@20220815
-u8 gTP_Vendor_ID=0;
-//#define TP_VENDOR_ID_CHECK
-
 /*
   * I2C funcionts:
   * @ ft5x06_get_regs/ft5x06_get_reg
@@ -292,64 +288,39 @@ FTS_BOOL cmd_write(struct i2c_client *client,FTS_BYTE btcmd,FTS_BYTE btPara1,FTS
 /*down_load fw code add by tuhm*/
 #define	MACRO_STRING(MACRO) #MACRO
 #define FT_APP_I(INAME) MACRO_STRING(INAME) 
-static unsigned char CTPM_FW[]=
+static unsigned char CTPM_FW_WJ[]=
 {
-    #include FT_APP_I(FIRM_I_FILE_NAME)
+	#include "V0c_D01_20170608_app.i"
 };
 
-//sunlei A:@20220815 for show vendor id of touchpannel
-static unsigned char CTPM_FW_O2[]=
+static unsigned char CTPM_FW_AT[]=
 {
-    //#include "5526_Ref_V13_D01_20220816_app.i"
 	#include "ACE1279_5526_Ref_V14_D01_20220830_app.i"
 };
 
-#define	FTS_MODULE_ID	0x79
-#define FTS_MODULE2_ID	0x7A
+#define	VENDOR_WJ	0x79
+#define	VENDOR_AT	0x7A
 
-#define FTS_MODULE_NAME		"O-Panel"
-#define FTS_MODULE2_NAME	"O2-Panel"
-
-struct upgrade_module module_list[] = {
-    {FTS_MODULE_ID, FTS_MODULE_NAME, CTPM_FW, sizeof(CTPM_FW)},
-    {FTS_MODULE2_ID, FTS_MODULE2_NAME, CTPM_FW_O2, sizeof(CTPM_FW_O2)},
+typedef struct {
+	u8 vendor;
+	u8 *fw_data;
+	u32 fw_len;
+} default_fw_t;
+static default_fw_t default_fw[] = {
+	{VENDOR_WJ, CTPM_FW_WJ, sizeof(CTPM_FW_WJ)},
+	{VENDOR_AT, CTPM_FW_AT, sizeof(CTPM_FW_AT)},
 };
 
-static unsigned char ft5x0x_read_vendor_id(struct i2c_client *client)
-{
-	ft5x06_get_reg(client, FT5X0X_REG_FT5201ID, &gTP_Vendor_ID);
-	pr_err("sunlei %s vendor_id=%02X\n", __FUNCTION__, gTP_Vendor_ID);
-	return(gTP_Vendor_ID);
-}
-
-unsigned char get_module_firmware_index(unsigned char vendor_id)
+static const default_fw_t *get_default_fw(u8 vendor)
 {
 	int i;
-	for(i=0; i<(sizeof(module_list)/sizeof(module_list[0])); i++)
-	{
-		if(module_list[i].id == vendor_id)
-			return i;
+	for (i = 0; sizeof(default_fw)/sizeof(default_fw[0]); i++) {
+		const default_fw_t *row = &default_fw[i];
+		if (row->vendor == vendor)
+			return row;
 	}
-	return 0;
+	return NULL;
 }
-
-#ifdef TP_VENDOR_ID_CHECK
-unsigned char fts_ctpm_get_i_file_vendor_id(void)
-{
-	u8 uFwIndex = get_module_firmware_index(gTP_Vendor_ID);
-	pr_err("sunlei %s uFwIndex=%d\n", __FUNCTION__, uFwIndex);
-	if(module_list[uFwIndex].fw_len > 2)
-	{
-		return module_list[uFwIndex].fw_file[module_list[uFwIndex].fw_len-1];
-	}
-    else
-    {
-        //TBD, error handling?
-        return 0xff; //default value
-    }
-}
-#endif //#if 0
-//sunlei A end
 
 static unsigned char ft5x0x_read_fw_ver(struct i2c_client *client)
 {
@@ -358,16 +329,35 @@ static unsigned char ft5x0x_read_fw_ver(struct i2c_client *client)
 	return(ver);
 }
 
-unsigned char fts_ctpm_get_i_file_ver(void)
+static unsigned char ft5x0x_read_vendor_id(struct i2c_client *client)
 {
-    u8 uFwIndex = get_module_firmware_index(gTP_Vendor_ID);
-	pr_err("sunlei %s uFwIndex=%d\n", __FUNCTION__, uFwIndex);
-	if(module_list[uFwIndex].fw_len > 2)
-	{
-		return module_list[uFwIndex].fw_file[module_list[uFwIndex].fw_len-2];
-	}
+	unsigned char ven;
+	ft5x06_get_reg(client, FT5X0X_REG_FT5201ID, &ven);
+	return(ven);
+}
+
+unsigned char fts_ctpm_get_i_file_ver(u8 *fw_data, u32 fw_len)
+{
+    unsigned int ui_sz;
+    ui_sz = fw_len;
+    if (ui_sz > 2)
+    {
+        return fw_data[ui_sz - 2];
+    }
     else
     {
+        //TBD, error handling?
+        return 0xff; //default value
+    }
+}
+
+unsigned char fts_ctpm_get_i_file_vendor_id(u8 *fw_data, u32 fw_len)
+{
+    unsigned int ui_sz;
+    ui_sz = fw_len;
+    if (ui_sz > 2) {
+        return fw_data[ui_sz - 1];
+    } else {
         //TBD, error handling?
         return 0xff; //default value
     }
@@ -768,15 +758,15 @@ E_UPGRADE_ERR_TYPE  fts_ctpm_fw_upgrade(struct i2c_client *client,FTS_BYTE* pbt_
 }
 
 
-int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
+int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client, u8 *fw_data, u32 fw_len)
 {
    FTS_BYTE*     pbt_buf = FTS_NULL;
    int i_ret;
     
     //=========FW upgrade========================*/
-	u8 uFwIndex = get_module_firmware_index(gTP_Vendor_ID);
-	pbt_buf = module_list[uFwIndex].fw_file;
-	i_ret =  fts_ctpm_fw_upgrade(client,pbt_buf,module_list[uFwIndex].fw_len);
+   pbt_buf = fw_data;
+   /*call the upgrade function*/
+   i_ret =  fts_ctpm_fw_upgrade(client,pbt_buf,fw_len);
    if (i_ret != 0)
    {
        printk("[FTS] upgrade failed i_ret = %d.\n", i_ret);
@@ -802,27 +792,35 @@ int fts_ctpm_auto_upg(struct i2c_client *client)
     int           i_ret;
 
 	//sunlei A:@20220815 for vendor id detect
-	#ifdef TP_VENDOR_ID_CHECK
-	unsigned char uc_host_fm_verdor_id;
-	unsigned char uc_tp_fm_verdor_id;
-	uc_tp_fm_verdor_id = ft5x0x_read_vendor_id(client);
-	uc_host_fm_verdor_id = fts_ctpm_get_i_file_vendor_id();
-
-	printk("[FTS]uc_tp_fm_verdor_id=0x%02X uc_host_fm_verdor_id=0x%02X\n",uc_tp_fm_verdor_id,uc_host_fm_verdor_id);
-	if(uc_tp_fm_verdor_id != uc_host_fm_verdor_id)
-	{
+	unsigned char uc_host_fm_vendor_id;
+	unsigned char uc_tp_fm_vendor_id;
+	const default_fw_t *row;
+	u8 *fw_data;
+	u32 fw_len;
+	uc_tp_fm_vendor_id = ft5x0x_read_vendor_id(client);
+	row = get_default_fw(uc_tp_fm_vendor_id);
+	if (!row) {
+		dev_err(&client->dev, "[FTS]sunlei tp vendor(%x) failed, upg abort\n",
+				uc_tp_fm_vendor_id);
+		return 0;
+	}
+	fw_data = row->fw_data;
+	fw_len = row->fw_len;
+	uc_host_fm_vendor_id = fts_ctpm_get_i_file_vendor_id(fw_data, fw_len);
+	printk("[FTS]uc_tp_fm_verdor_id=0x%02X uc_host_fm_verdor_id=0x%02X\n",
+			uc_tp_fm_vendor_id,uc_host_fm_vendor_id);
+	if(uc_tp_fm_vendor_id != uc_host_fm_vendor_id) {
 		printk("[FTS]sunlei TP firmware and .i file has different vendor id, update abort!");
 		return 0;
 	}
-	#endif//#if 0
 	//sunlei A end
 
     uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
     //printk("***uc_tp_fm_ver=%x\n",uc_tp_fm_ver);
     //uc_tp_fm_ver -=1;
     
-    uc_host_fm_ver = fts_ctpm_get_i_file_ver();
-	
+	uc_host_fm_ver = fts_ctpm_get_i_file_ver(fw_data, fw_len);
+
     printk("[FTS]uc_tp_fm_ver=%x uc_host_fm_ver=%x\n",uc_tp_fm_ver,uc_host_fm_ver);
     if(uc_host_fm_ver== uc_tp_fm_ver){
     	printk("[FTS]version %d ,don't need upgrade \n",uc_tp_fm_ver);
@@ -838,11 +836,11 @@ int fts_ctpm_auto_upg(struct i2c_client *client)
         msleep(100);
         printk("[FTS] uc_tp_fm_ver = 0x%x, uc_host_fm_ver = 0x%x\n",
             uc_tp_fm_ver, uc_host_fm_ver);
-        i_ret = fts_ctpm_fw_upgrade_with_i_file(client);    
+        i_ret = fts_ctpm_fw_upgrade_with_i_file(client, fw_data, fw_len);
         if (i_ret == 0)
         {
             msleep(300);
-            uc_host_fm_ver = fts_ctpm_get_i_file_ver();
+			uc_host_fm_ver = fts_ctpm_get_i_file_ver(fw_data, fw_len);
             printk("[FTS] upgrade to new version 0x%x\n", uc_host_fm_ver);
         }
         else
@@ -901,22 +899,45 @@ unsigned char fts_ctpm_get_fwfile_ver(struct i2c_client *client)
 	return 0xff; //default value
 }
 
+unsigned char fts_ctpm_get_fwfile_vendor_id(struct i2c_client *client)
+{
+	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
+	unsigned int ui_ver_pos;
+
+	if (ftdev->fw->data && ftdev->fw->size >= 2) {
+		ui_ver_pos = ftdev->fw->size - 1;
+		return ftdev->fw->data[ui_ver_pos];
+	}
+	//TBD, error handling?
+	return 0xff; //default value
+}
+
 int fts_ctpm_manual_upg(struct i2c_client *client, int force)
 {
 	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
-	unsigned char uc_host_fm_ver;
-	unsigned char uc_tp_fm_ver;
+	unsigned char uc_host_fm_ver;	/* app.i version */
+	unsigned char uc_host_vendor;	/* app.i vendor */
+	unsigned char uc_tp_fm_ver;		/* tp dev version */
+	unsigned char uc_tp_vendor;		/* tp dev vendor */
 	int           i_ret;
 
 	if (!ftdev->fw->data) {
 		dev_err(&client->dev, "fw data not loaded\n");
-		return 0;
+		return -EINVAL;
+	}
+	uc_tp_vendor = ft5x0x_read_vendor_id(client);
+	uc_host_vendor = fts_ctpm_get_fwfile_vendor_id(client);
+	if (uc_tp_vendor != uc_host_vendor) {
+		dev_err(&client->dev, "fw data vendor not match tp:%x/file:%x\n",
+				uc_tp_vendor, uc_host_vendor);
+		return -EPERM;
 	}
 	uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
 	uc_host_fm_ver = fts_ctpm_get_fwfile_ver(client);
+
 	dev_info(&client->dev,
-			"chip fw version=0x%02x, upgrade fw version=0x%02x\n",
-			uc_tp_fm_ver, uc_host_fm_ver);
+			"chip fw for %x version=0x%02x, upgrade fw version=0x%02x\n",
+			uc_tp_vendor, uc_tp_fm_ver, uc_host_fm_ver);
 	if ((uc_host_fm_ver == uc_tp_fm_ver) && (force == 0)) {
 		dev_info(&client->dev,
 				"fw version=%x, don't need upgrade\n", uc_tp_fm_ver);
@@ -929,45 +950,63 @@ int fts_ctpm_manual_upg(struct i2c_client *client, int force)
 		msleep(300);
 		uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
 		//uc_host_fm_ver = fts_ctpm_get_fwfile_ver(client);
-		dev_info(&client->dev, "fw upgrade to new version 0x%02x\n",
-				uc_tp_fm_ver);
+		dev_info(&client->dev, "fw for %x upgrade to new version 0x%02x\n",
+				uc_tp_vendor, uc_tp_fm_ver);
 	} else {
        dev_err(&client->dev, "fw upgrade failed ret=%d\n", i_ret);
 	}
 
-	return 0;
+	return i_ret;
 }
 
 /*
- * WJ1307_5526_1280x800_V09_D01_20170502_app.i force load
+ * *_app.i force load
  */
-int fts_ctpm_v09_load(struct i2c_client *client)
+int fts_ctpm_default_fw_load(struct i2c_client *client)
 {
 	struct ft5x06_device *ftdev = i2c_get_clientdata(client);
-	unsigned char uc_09_fm_ver;
-	unsigned char uc_tp_fm_ver;
+	unsigned char uc_if_fm_ver;	/* app.i version */
+	unsigned char uc_if_vendor;	/* app.i vendor */
+	unsigned char uc_tp_fm_ver;	/* tp dev version */
+	unsigned char uc_tp_vendor;	/* tp dev vendor */
 	int i_ret;
+	const default_fw_t *row;
+	u8 *fw_data;
+	u32 fw_len;
 
 	if (!ftdev->fw->data) {
 		kfree(ftdev->fw->data);
 		ftdev->fw->size = 0;
 		ftdev->fw->data = NULL;
 	}
-	uc_09_fm_ver = fts_ctpm_get_i_file_ver();
 
-	i_ret = fts_ctpm_fw_upgrade_with_i_file(client);
+	uc_tp_vendor = ft5x0x_read_vendor_id(client);
+	row = get_default_fw(uc_tp_vendor);
+	if (!row) {
+       dev_err(&client->dev, "tp vendor(%x) failed.\n", uc_tp_vendor);
+		return -EPERM;
+	}
+	fw_data = row->fw_data;
+	fw_len = row->fw_len;
+	uc_if_fm_ver = fts_ctpm_get_i_file_ver(fw_data, fw_len);
+	uc_if_vendor = fts_ctpm_get_i_file_vendor_id(fw_data, fw_len);
+
+	i_ret = fts_ctpm_fw_upgrade_with_i_file(client, fw_data, fw_len);
 	if (i_ret == 0) {
 		msleep(300);
 		uc_tp_fm_ver = ft5x0x_read_fw_ver(client);
-		if (uc_09_fm_ver == uc_tp_fm_ver) {
-			dev_info(&client->dev, "fw V09 load successfully\n");
+		if (uc_if_fm_ver == uc_tp_fm_ver) {
+			dev_info(&client->dev, "fw for %x %02x load successfully\n",
+					uc_tp_vendor, uc_tp_fm_ver);
 			return 0;
 		}
-		dev_info(&client->dev, "fw V09 load failed? now version 0x%02x\n",
-				uc_tp_fm_ver);
-		i_ret = -1;
+		dev_info(&client->dev, "fw for %x load failed? now version 0x%02x\n",
+				uc_tp_vendor, uc_tp_fm_ver);
+		i_ret = -EIO;
 	} else {
-		dev_err(&client->dev, "fw V09 load failed ret=%d\n", i_ret);
+		dev_err(&client->dev, "fw for %x load failed ret=%d\n",
+				uc_tp_vendor, i_ret);
+		i_ret = -ENXIO;
 	}
 
 	return i_ret;
@@ -986,13 +1025,13 @@ enum {
 	FT5X06_IOCTL_FW_UPDATE_FORCE,
 	FT5X06_IOCTL_FW_DEFAULT_LOAD,
 	FT5X06_IOCTL_GET_VERSION,
-	FT5X06_IOCTL_GET_VENDOR_ID,//sunlei
+	FT5X06_IOCTL_GET_VENDOR_ID,	//sunlei
 };
 #define IOCTL_FW_UPDATE     _IO('F', FT5X06_IOCTL_FW_UPDATE)
 #define IOCTL_FW_FUPDATE    _IO('F', FT5X06_IOCTL_FW_UPDATE_FORCE)
 #define IOCTL_FW_DEFAULT    _IO('F', FT5X06_IOCTL_FW_DEFAULT_LOAD)
 #define IOCTL_GET_VERSION   _IO('F', FT5X06_IOCTL_GET_VERSION)
-#define IOCTL_GET_VENDOR_ID   _IO('F', FT5X06_IOCTL_GET_VENDOR_ID) //sunlei
+#define IOCTL_GET_VENDOR_ID _IO('F', FT5X06_IOCTL_GET_VENDOR_ID)	//sunlei
 
 static int ft5x06_fs_open(struct inode *node, struct file *fp)
 {
@@ -1070,10 +1109,17 @@ static long ft5x06_fs_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 	long ret = 0;
 
 	switch (cmd) {
+	case IOCTL_GET_VENDOR_ID:
+		//sunlei A:@20220815 for show vendor id of touchpanel
+		dev_info(&client->dev, "fw get vendor id cmd\n");
+		ret = ft5x0x_read_vendor_id(client);
+		dev_info(&client->dev, "tp fw vendor id 0x%02lx\n", ret);
+		break;
+		//sunlei A end
 	case IOCTL_GET_VERSION:
 		dev_info(&client->dev, "fw get version cmd\n");
 		ret = ft5x0x_read_fw_ver(client);
-		dev_info(&client->dev, "tp fw version 0x%ld\n", ret);
+		dev_info(&client->dev, "tp fw version %ld\n", ret);
 		break;
 	case IOCTL_FW_FUPDATE:
 		force_upd = 1;
@@ -1083,16 +1129,9 @@ static long ft5x06_fs_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 		ret = fts_ctpm_manual_upg(client, force_upd);
 		break;
 	case IOCTL_FW_DEFAULT:
-		dev_info(&client->dev, "fw V09 force loader cmd\n");
-		ret = fts_ctpm_v09_load(client);
+		dev_info(&client->dev, "fw default fw force loader cmd\n");
+		ret = fts_ctpm_default_fw_load(client);
 		break;
-	//sunlei A:@20220815 for show vendor id of touchpannel
-	case IOCTL_GET_VENDOR_ID:
-		dev_info(&client->dev, "get vendor_id cmd\n");
-		ret = ft5x0x_read_vendor_id(client);
-		dev_info(&client->dev, "tp vendor_id 0x%ld\n", ret);
-		break;
-	//sunlei A end
 	default:
 		ret = -EINVAL;
 		break;
@@ -1138,7 +1177,7 @@ static int ft5x06_chardev_setup(struct ft5x06_device *ftdev)
 	}
 	ftdev->fw->size = 0;
 	ftdev->fw->data = NULL;
-	dev_info(&client->dev, "%s done(app_i=%d)\n", __func__, module_list[get_module_firmware_index(gTP_Vendor_ID)].fw_len);
+	dev_info(&client->dev, "%s done\n", __func__);
 
 	return 0;
 }
@@ -1268,31 +1307,31 @@ static ssize_t info_store(struct device *dev,
     return count;
 }
 
-//sunlei A:@20220815 for show vendor id of touchpannel
+//sunlei A:@20220815 for show vendor id of touchpanel
 static ssize_t vendor_id_show(struct device *dev,
-        struct device_attribute *attr,char *buf)
+	struct device_attribute *attr,char *buf)
 {
-    struct ft5x06_device *ftdevice = (struct ft5x06_device *)dev_get_drvdata(dev);
+	struct ft5x06_device *ftdevice = (struct ft5x06_device *)dev_get_drvdata(dev);
+	u8 vendor_id;
+	int ret;
 
-    int ret;
+	ret = ft5x06_get_reg(ftdevice->client, FT5X0X_REG_FT5201ID, &vendor_id);
+	if ( ret ) {
+		FT5X06_WARNNING("get ft5201 vendor id failed");
+		goto err;
+	}
 
-    ret = ft5x06_get_reg(ftdevice->client, FT5X0X_REG_FT5201ID, &gTP_Vendor_ID);
-    if ( ret ) {
-        FT5X06_WARNNING("get ft5201 vendor id failed");
-        goto err;
-    }
-
-    ret = sprintf(buf, "0x%02X\n", (int)gTP_Vendor_ID);
-    return ret;
+	ret = sprintf(buf, "0x%02x\n", (int)vendor_id);
+	return ret;
 
 err:
-    return 0;
+	return 0;
 }
 
 static ssize_t vendor_id_store(struct device *dev,
-        struct device_attribute *attr, const char *buf, size_t count)
+	struct device_attribute *attr, const char *buf, size_t count)
 {
-    return count;
+	return count;
 }
 //sunlei A end
 
@@ -1502,8 +1541,8 @@ static struct device_attribute ft5x06_attr[] = {
     __ATTR(mode, S_IRUSR | S_IWUSR, mode_show, mode_store),
     __ATTR(debug, S_IRUSR | S_IWUSR, debug_show, debug_store),
     __ATTR(firmware_version, S_IRUSR | S_IWUSR, info_show, info_store), //  /sys/devices/b0174000.i2c/i2c-1/1-0038/firmware_version
-    //sunlei A:@20220815 for show vendor id of touchpannel
-    __ATTR(vendor_id, S_IRUSR | S_IWUSR, vendor_id_show, vendor_id_store), //  /sys/devices/b0174000.i2c/i2c-1/1-0038/vender_id
+	//sunlei A:@20220815 for show vendor id of touchpanel
+	__ATTR(vendor_id, S_IRUSR | S_IWUSR, vendor_id_show, vendor_id_store), //  /sys/devices/b0174000.i2c/i2c-1/1-0038/vender_id
     __ATTR(scan_rate, S_IRUSR | S_IWUSR, rate_show, rate_store),
     __ATTR(reset, S_IRUSR | S_IWUSR, reset_show, reset_store),
 	__ATTR(reset_waitms, S_IRUSR | S_IWUSR,
@@ -2449,8 +2488,8 @@ static int ft5x06_probe(struct i2c_client *client,
 //* Modify by Hayden.Hu -- end
 #endif
 
-	ft5x0x_read_vendor_id(client);//sunlei A:@20220815 for read vendor id
-#if 0 //Disable firmware download, only update form app
+
+#if 0
     printk("ft5x06 probe v2.0 i file,FT5X0X_DOWNLOAD_FIRM=(%d)\n", FT5X0X_DOWNLOAD_FIRM);
 	#if (FT5X0X_DOWNLOAD_FIRM==1)
 printk("download !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -2706,4 +2745,4 @@ module_init(touch_ft5x06_init);
 module_exit(touch_ft5x06_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("lzhou/Actions Semi, Inc");
-MODULE_DESCRIPTION("driver for touch pannel of Focal Tech's FT5x06");
+MODULE_DESCRIPTION("driver for touch panel of Focal Tech's FT5x06");

@@ -24,39 +24,69 @@ enum {
 	FT5X06_IOCTL_FW_UPDATE_FORCE,
 	FT5X06_IOCTL_FW_DEFAULT_LOAD,
 	FT5X06_IOCTL_GET_VERSION,
+	FT5X06_IOCTL_GET_VENDOR_ID,
 };
 #define IOCTL_FW_UPDATE		_IO('F', FT5X06_IOCTL_FW_UPDATE)
 #define IOCTL_FW_FUPDATE	_IO('F', FT5X06_IOCTL_FW_UPDATE_FORCE)
 #define IOCTL_FW_DEFAULT	_IO('F', FT5X06_IOCTL_FW_DEFAULT_LOAD)
 #define IOCTL_GET_VERSION	_IO('F', FT5X06_IOCTL_GET_VERSION)
+#define IOCTL_GET_VENDOR_ID	_IO('F', FT5X06_IOCTL_GET_VENDOR_ID)
 
-static void show_version()
+static int vendor_version[2];
+static int *get_vendor_version()
 {
 	int fd;
-	int ret;
+	int *ret = vendor_version;
 
 	fd = open(ctrl_dev, O_RDWR);
 	if (fd < 0) {
 		perror("open dev");
 		fprintf(stderr, "%s open failed, ctp_ft5x06.ko loaded?\n", ctrl_dev);
-		return;
+		return NULL;
 	}
-	ret = ioctl(fd, IOCTL_GET_VERSION);
-	if (ret < 0) {
+	ret[0] = ioctl(fd, IOCTL_GET_VENDOR_ID);
+	if (ret[0] < 0) {
+		perror("ioctl get vendor");
+		close(fd);
+		return NULL;
+	}
+	ret[1] = ioctl(fd, IOCTL_GET_VERSION);
+	if (ret[1] < 0) {
 		perror("ioctl get version");
 		close(fd);
-		return;
+		return NULL;
 	}
 	close(fd);
-	fprintf(stdout, "%02x\n", ret);
+	return ret;
+}
+
+static void show_version()
+{
+	int fd;
+	int *ret;
+
+	ret = get_vendor_version();
+	if (ret != NULL)
+		fprintf(stdout, "0x%02x(%d)\n", ret[1], ret[1]);
+}
+
+static void show_vendor_version()
+{
+	int fd;
+	int *ret;
+
+	ret = get_vendor_version();
+	if (ret != NULL)
+		fprintf(stdout, "Vendor:0x%02x Version:0x%02x(%d)\n",
+				ret[0], ret[1], ret[1]);
 }
 
 static void fw_default_load()
 {
 	int fd;
-	int ret;
+	int ret, *vv;
 
-	fprintf(stdout, "ft5x06 firmware V09 force load\n");
+	fprintf(stdout, "ft5x06 default firmware force load\n");
 	fd = open(ctrl_dev, O_RDWR);
 	if (fd < 0) {
 		perror("open dev");
@@ -64,20 +94,19 @@ static void fw_default_load()
 		return;
 	}
 	ret = ioctl(fd, IOCTL_FW_DEFAULT);
+	close(fd);
 	if (ret < 0) {
 		perror("ioctl fw default load");
-		close(fd);
 		return;
 	}
-	ret = ioctl(fd, IOCTL_GET_VERSION);
-	close(fd);
-	fprintf(stdout, "ft5x06 firmware V09(%02x) force load done\n", ret);
+	fprintf(stdout, "ft5x06 default firmware load done\n");
+	show_vendor_version();
 }
 
 static void usage(const char *pname)
 {
 	fprintf(stderr,
-		"Usage: %s --input=<app.i file> [--default] [--force] [--help] [--version]\n\n",
+		"Usage: %s --input=<app.i file> [--default] [--force] [--help] [--version] [--vendor]\n\n",
 		pname);
 }
 
@@ -95,6 +124,7 @@ int main(int argc, char *argv[])
 	const char *firmware = NULL;
 	char *msg;
 	int getver = 0;
+	int getvendor = 0;
 	int default_load = 0;
 	char *p;
 	long lch;
@@ -103,6 +133,7 @@ int main(int argc, char *argv[])
 		{ "force", no_argument, NULL, 'f' },
 		{ "input", required_argument, NULL, 'i' },
 		{ "version", no_argument, NULL, 'v' },
+		{ "vendor", no_argument, NULL, 'b' },
 		{ "help", no_argument, NULL, 'h' },
 		{ "default", no_argument, NULL, 'd' },
 		{}
@@ -111,7 +142,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int option;
 
-		option = getopt_long(argc, argv, "fhi:vd", options, NULL);
+		option = getopt_long(argc, argv, "fhi:vbd", options, NULL);
 		if (option == -1)
 			break;
 
@@ -124,6 +155,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'v':
 			getver = 1;
+			break;
+		case 'b':
+			getvendor = 1;
 			break;
 		case 'd':
 			default_load = 1;
@@ -141,7 +175,13 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	/* fw default(V09) load */
+	/* show vendor */
+	if (getvendor) {
+		show_vendor_version();
+		return 0;
+	}
+
+	/* fw default load */
 	if (default_load) {
 		fw_default_load();
 		return 0;
@@ -236,6 +276,9 @@ int main(int argc, char *argv[])
 	if (ret == 0)
 		fprintf(stdout, "ft5x06 firmware update to ver.0x%02x successfully\n",
 				fw_data[fw_size - 2]);
+	else if (ret == -1)
+		fprintf(stderr, "ft5x06 firmware update vendor(0x%02x) not match\n",
+				fw_data[fw_size - 1]);
 	else
 		fprintf(stderr, "ft5x06 firmware update to ver.0x%02x failed\n",
 				fw_data[fw_size - 2]);
